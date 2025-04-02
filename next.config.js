@@ -7,6 +7,8 @@ const nextConfig = {
       'via.placeholder.com',
       'placekitten.com',
       'placeimg.com',
+      'randomuser.me',
+      'media.istockphoto.com'
     ],
   },
 };

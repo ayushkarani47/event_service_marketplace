@@ -1,240 +1,304 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import ServiceCard from '@/components/services/ServiceCard';
-import ServiceFilters from '@/components/services/ServiceFilters';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import { getAllServices } from '@/lib/serviceClient';
+import { IService } from '@/models/Service';
 
-interface Service {
-  _id: string;
-  title: string;
-  category: string;
-  price: number;
-  priceType: 'fixed' | 'hourly' | 'starting_at';
-  location: string;
-  rating: number;
-  reviewCount: number;
-  provider: {
-    _id: string;
-    name: string;
-    profileImage?: string;
-  };
-  images: string[];
-}
+const categories = [
+  { value: '', label: 'All Categories' },
+  { value: 'photography', label: 'Photography' },
+  { value: 'catering', label: 'Catering' },
+  { value: 'venue', label: 'Venue' },
+  { value: 'entertainment', label: 'Entertainment' },
+  { value: 'decor', label: 'Decoration' },
+  { value: 'other', label: 'Other' },
+];
 
-const ServicesPage = () => {
-  const [services, setServices] = useState<Service[]>([]);
-  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
+export default function ServicesPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [services, setServices] = useState<IService[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilters, setActiveFilters] = useState<any>({});
 
-  // Mock data for demonstration
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [location, setLocation] = useState('');
+  const [minRating, setMinRating] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+
   useEffect(() => {
-    // In a real application, this would fetch data from the API
-    const mockServices: Service[] = [
-      {
-        _id: '1',
-        title: 'Professional Photography Service',
-        category: 'photography',
-        price: 150,
-        priceType: 'hourly',
-        location: 'New York, NY',
-        rating: 4.8,
-        reviewCount: 24,
-        provider: {
-          _id: 'provider1',
-          name: 'John Smith Photography',
-          profileImage: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1Y6UI3bLgJVstrm7JHp0SLKXpLEw4SqQXcA&s'
-        },
-        images: ['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1Y6UI3bLgJVstrm7JHp0SLKXpLEw4SqQXcA&s']
-      },
-      {
-        _id: '2',
-        title: 'Elegant Wedding Venue',
-        category: 'venue',
-        price: 5000,
-        priceType: 'fixed',
-        location: 'Los Angeles, CA',
-        rating: 4.5,
-        reviewCount: 18,
-        provider: {
-          _id: 'provider2',
-          name: 'Grand Ballroom Events',
-          profileImage: 'https://images.unsplash.com/photo-1532489618490-4ce501a8104a'
-        },
-        images: ['https://images.unsplash.com/photo-1519225421980-715cb0215aed']
-      },
-      {
-        _id: '3',
-        title: 'Professional DJ Services',
-        category: 'dj',
-        price: 100,
-        priceType: 'hourly',
-        location: 'Chicago, IL',
-        rating: 4.9,
-        reviewCount: 32,
-        provider: {
-          _id: 'provider3',
-          name: 'Mike\'s DJ Entertainment',
-          profileImage: 'https://images.unsplash.com/photo-1543486958-d783bfbf7f8e'
-        },
-        images: ['https://images.unsplash.com/photo-1594623930572-300a3011d9ae']
-      },
-      {
-        _id: '4',
-        title: 'Luxury Catering Service',
-        category: 'catering',
-        price: 35,
-        priceType: 'starting_at',
-        location: 'Miami, FL',
-        rating: 4.7,
-        reviewCount: 41,
-        provider: {
-          _id: 'provider4',
-          name: 'Gourmet Delights Catering',
-          profileImage: 'https://images.unsplash.com/photo-1581349295148-a04d592eebaf'
-        },
-        images: ['https://images.unsplash.com/photo-1530062845289-9109b2c9c868']
-      },
-      {
-        _id: '5',
-        title: 'Event Decoration Services',
-        category: 'decoration',
-        price: 500,
-        priceType: 'starting_at',
-        location: 'Dallas, TX',
-        rating: 4.6,
-        reviewCount: 29,
-        provider: {
-          _id: 'provider5',
-          name: 'Creative Decorations Inc.',
-          profileImage: 'https://images.unsplash.com/photo-1509909756405-be0199881695'
-        },
-        images: ['https://images.unsplash.com/photo-1505236858219-8359eb29e329']
-      },
-      {
-        _id: '6',
-        title: 'Professional Makeup Artist',
-        category: 'makeup',
-        price: 120,
-        priceType: 'fixed',
-        location: 'New York, NY',
-        rating: 4.9,
-        reviewCount: 37,
-        provider: {
-          _id: 'provider6',
-          name: 'Glam Squad Makeup',
-          profileImage: 'https://images.unsplash.com/photo-1530653895439-4b332bd1b80c'
-        },
-        images: ['https://images.unsplash.com/photo-1543447318-5bfff33f1b0a']
-      }
-    ];
+    // Set initial filter values from URL
+    const category = searchParams.get('category') || '';
+    const search = searchParams.get('search') || '';
+    const loc = searchParams.get('location') || '';
+    const rating = searchParams.get('minRating') || '';
+    const min = searchParams.get('minPrice') || '';
+    const max = searchParams.get('maxPrice') || '';
 
-    setServices(mockServices);
-    setFilteredServices(mockServices);
-    setLoading(false);
-  }, []);
+    setSelectedCategory(category);
+    setSearchTerm(search);
+    setLocation(loc);
+    setMinRating(rating);
+    setMinPrice(min);
+    setMaxPrice(max);
 
-  const handleFilterChange = (filters: any) => {
-    setActiveFilters(filters);
-    
-    let filtered = [...services];
-    
-    // Apply search filter
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(
-        service =>
-          service.title.toLowerCase().includes(searchTerm) ||
-          service.category.toLowerCase().includes(searchTerm) ||
-          service.location.toLowerCase().includes(searchTerm)
-      );
+    // Fetch services
+    fetchServices({
+      category,
+      search,
+      location: loc,
+      minRating: rating,
+      minPrice: min,
+      maxPrice: max,
+    });
+  }, [searchParams]);
+
+  const fetchServices = async (filters: Record<string, string>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedServices = await getAllServices(filters);
+      setServices(fetchedServices);
+    } catch (err: any) {
+      console.error('Error fetching services:', err);
+      setError(err.message || 'Failed to load services. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    
-    // Apply category filter
-    if (filters.category) {
-      filtered = filtered.filter(service => service.category === filters.category);
-    }
-    
-    // Apply location filter
-    if (filters.location) {
-      const locationTerm = filters.location.toLowerCase();
-      filtered = filtered.filter(service => service.location.toLowerCase().includes(locationTerm));
-    }
-    
-    // Apply price range filter
-    if (filters.minPrice) {
-      filtered = filtered.filter(service => service.price >= Number(filters.minPrice));
-    }
-    
-    if (filters.maxPrice) {
-      filtered = filtered.filter(service => service.price <= Number(filters.maxPrice));
-    }
-    
-    // Apply rating filter
-    if (filters.minRating) {
-      filtered = filtered.filter(service => service.rating >= Number(filters.minRating));
-    }
-    
-    setFilteredServices(filtered);
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Build query string
+    const params = new URLSearchParams();
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (searchTerm) params.set('search', searchTerm);
+    if (location) params.set('location', location);
+    if (minRating) params.set('minRating', minRating);
+    if (minPrice) params.set('minPrice', minPrice);
+    if (maxPrice) params.set('maxPrice', maxPrice);
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-4">
-        <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Services</h1>
-        <p className="text-gray-600">{error}</p>
-      </div>
-    );
-  }
+    // Navigate to same page with filters
+    router.push(`/services?${params.toString()}`);
+  };
+
+  const clearFilters = () => {
+    setSelectedCategory('');
+    setSearchTerm('');
+    setLocation('');
+    setMinRating('');
+    setMinPrice('');
+    setMaxPrice('');
+    router.push('/services');
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Event Services</h1>
-        </div>
-        
-        <ServiceFilters onFilterChange={handleFilterChange} />
-        
-        {filteredServices.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredServices.map((service) => (
-              <ServiceCard
-                key={service._id}
-                id={service._id}
-                title={service.title}
-                category={service.category}
-                price={service.price}
-                priceType={service.priceType}
-                location={service.location}
-                rating={service.rating}
-                reviewCount={service.reviewCount}
-                providerName={service.provider.name}
-                providerImage={service.provider.profileImage}
-                image={service.images[0]}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Event Services</h1>
+
+      {/* Filters Section */}
+      <div className="bg-white shadow-md rounded-lg p-6 mb-8">
+        <h2 className="text-lg font-semibold mb-4">Find the Perfect Service</h2>
+        <form onSubmit={handleSearch} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="searchTerm" className="block text-sm font-medium text-gray-700 mb-1">
+                Search
+              </label>
+              <input
+                type="text"
+                id="searchTerm"
+                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Search for services..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
-            ))}
+            </div>
+
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <select
+                id="category"
+                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                {categories.map((cat) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
+              <input
+                type="text"
+                id="location"
+                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="City, state or 'online'"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+            </div>
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-16">
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">No services found</h2>
-            <p className="text-gray-500">
-              Try adjusting your search or filter criteria to find what you're looking for.
-            </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="minRating" className="block text-sm font-medium text-gray-700 mb-1">
+                Minimum Rating
+              </label>
+              <select
+                id="minRating"
+                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                value={minRating}
+                onChange={(e) => setMinRating(e.target.value)}
+              >
+                <option value="">Any Rating</option>
+                <option value="3">3+ Stars</option>
+                <option value="4">4+ Stars</option>
+                <option value="4.5">4.5+ Stars</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="minPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                Min Price ($)
+              </label>
+              <input
+                type="number"
+                id="minPrice"
+                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Min price"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                min="0"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="maxPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                Max Price ($)
+              </label>
+              <input
+                type="number"
+                id="maxPrice"
+                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Max price"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                min="0"
+              />
+            </div>
           </div>
-        )}
+
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            >
+              Clear Filters
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+            >
+              Apply Filters
+            </button>
+          </div>
+        </form>
       </div>
+
+      {/* Results Section */}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-pulse text-xl font-semibold">Loading...</div>
+        </div>
+      ) : services.length === 0 ? (
+        <div className="bg-white shadow rounded-lg p-6 text-center">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No services found</h3>
+          <p className="text-gray-500 mb-4">
+            Try adjusting your filters or search criteria to find more services.
+          </p>
+          <button
+            onClick={clearFilters}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+          >
+            Clear Filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {services.map((service) => (
+            <Link 
+              key={service._id?.toString()} 
+              href={`/services/${service._id}`}
+              className="block bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow"
+            >
+              <div className="relative h-48 bg-gray-200">
+                {service.images && service.images.length > 0 ? (
+                  <Image 
+                    src={service.images[0]} 
+                    alt={service.title}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-gray-400">No image</span>
+                  </div>
+                )}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white font-medium">{service.category}</span>
+                    <div className="bg-white text-xs font-semibold px-2 py-1 rounded-full text-blue-600">
+                      ${service.price}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4">
+                <h3 className="text-lg font-semibold mb-2 text-gray-900">{service.title}</h3>
+                <p className="text-gray-600 mb-3 line-clamp-2">{service.description}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center text-sm text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {service.location}
+                  </div>
+                  <div className="flex items-center text-amber-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    <span className="ml-1 text-xs font-semibold">{service.rating || 'New'}</span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
-};
-
-export default ServicesPage; 
+} 

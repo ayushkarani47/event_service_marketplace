@@ -5,6 +5,9 @@ import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { StarIcon, MapPinIcon, UserIcon, CalendarDaysIcon } from '@heroicons/react/24/solid';
 import BookingForm from '@/components/bookings/BookingForm';
+import Link from 'next/link';
+import { getServiceById } from '@/lib/serviceClient';
+import { useAuth } from '@/context/AuthContext';
 
 interface Service {
   _id: string;
@@ -17,6 +20,11 @@ interface Service {
   location: string;
   rating: number;
   reviewCount: number;
+  features?: string[];
+  availability?: {
+    startDate: string;
+    endDate: string;
+  };
   provider: {
     _id: string;
     name: string;
@@ -43,104 +51,71 @@ const ServiceDetailsPage = () => {
   const params = useParams();
   const router = useRouter();
   const { id } = params;
+  const { user, isAuthenticated } = useAuth();
   
   const [service, setService] = useState<Service | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // Mock data for demonstration
   useEffect(() => {
-    // In a real application, this would fetch data from the API
-    const mockService: Service = {
-      _id: id as string,
-      title: 'Professional Photography Service',
-      description: 'Capture your special moments with our professional photography services. We specialize in event photography including weddings, corporate events, and birthday parties. Our team uses high-end equipment to ensure the highest quality photos.',
-      category: 'photography',
-      price: 150,
-      priceType: 'hourly',
-      images: [
-        'https://images.unsplash.com/photo-1537734552481-104f29e035df',
-        'https://images.unsplash.com/photo-1566566650093-eef8434d9ffb',
-      ],
-      location: 'New York, NY',
-      rating: 4.8,
-      reviewCount: 24,
-      provider: {
-        _id: 'provider123',
-        name: 'John Smith Photography',
-        profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e',
-        bio: 'Professional photographer with over 10 years of experience. Specializing in event and portrait photography.',
-        location: 'New York, NY'
+    const fetchService = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        if (!id) {
+          throw new Error('Service ID is missing');
+        }
+        
+        const fetchedService = await getServiceById(id.toString());
+        setService(fetchedService);
+        if (fetchedService.images && fetchedService.images.length > 0) {
+          setSelectedImage(fetchedService.images[0]);
+        }
+      } catch (err: any) {
+        console.error('Error fetching service:', err);
+        setError(err.message || 'Failed to load service details. Please try again.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    const mockReviews: Review[] = [
-      {
-        _id: 'review1',
-        rating: 5,
-        comment: 'Amazing service! John was professional, punctual, and the photos turned out beautifully.',
-        createdAt: '2023-06-15T14:30:00Z',
-        customer: {
-          _id: 'customer1',
-          name: 'Sarah Johnson',
-          profileImage: 'https://randomuser.me/api/portraits/women/44.jpg'
-        }
-      },
-      {
-        _id: 'review2',
-        rating: 4,
-        comment: 'Great photos and good service. Would recommend for any event.',
-        reply: 'Thank you for your feedback! It was a pleasure working with you.',
-        createdAt: '2023-05-22T10:15:00Z',
-        customer: {
-          _id: 'customer2',
-          name: 'Michael Brown',
-          profileImage: 'https://randomuser.me/api/portraits/men/32.jpg'
-        }
-      }
-    ];
-
-    setService(mockService);
-    setReviews(mockReviews);
-    setLoading(false);
-    
-    // Mock authentication state
-    setIsLoggedIn(true);
-    setUserRole('customer');
+    fetchService();
   }, [id]);
 
-  const handleBookingSubmit = (bookingData: any) => {
-    console.log('Booking submitted:', bookingData);
+  const handleBookNow = () => {
+    if (!isAuthenticated) {
+      // Redirect to login page with a return URL
+      router.push(`/login?returnUrl=/services/${id}`);
+      return;
+    }
     
-    // In a real app, this would call an API to create a booking
-    alert('Booking created successfully! (This is a mock response)');
-    
-    // Redirect to bookings page
-    // router.push('/bookings');
+    // Show the booking form
+    setShowBookingForm(true);
   };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-pulse text-xl font-semibold">Loading service details...</div>
       </div>
     );
   }
 
   if (error || !service) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-4">
-        <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Service</h1>
-        <p className="text-gray-600 mb-6">{error || 'Service not found'}</p>
-        <button
-          onClick={() => router.push('/services')}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          Back to Services
-        </button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+          <p className="text-lg text-red-700">
+            {error || 'Service not found'}
+          </p>
+          <Link href="/services" className="mt-4 inline-block text-blue-600 hover:underline">
+            Back to all services
+          </Link>
+        </div>
       </div>
     );
   }
@@ -157,184 +132,204 @@ const ServiceDetailsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Service Details */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              {/* Image Gallery */}
-              <div className="relative h-96 w-full">
-                {service.images && service.images.length > 0 ? (
-                  <Image
-                    src={service.images[0]}
-                    alt={service.title}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="bg-gray-200 h-full w-full flex items-center justify-center">
-                    <span className="text-gray-500">No image available</span>
-                  </div>
-                )}
-              </div>
-              
-              {/* Service Info */}
-              <div className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{service.title}</h1>
-                    <div className="flex items-center mt-2">
-                      <div className="flex items-center">
-                        {[0, 1, 2, 3, 4].map((star) => (
-                          <StarIcon
-                            key={star}
-                            className={`h-5 w-5 ${
-                              star < Math.floor(service.rating) ? 'text-yellow-400' : 'text-gray-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="ml-2 text-sm text-gray-600">
-                        {service.rating} ({service.reviewCount} reviews)
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-600">{getPriceText()}</div>
-                </div>
-                
-                <div className="mt-4 flex items-center text-gray-600">
-                  <MapPinIcon className="h-5 w-5 mr-2" />
-                  <span>{service.location}</span>
-                </div>
-                
-                <div className="mt-6">
-                  <h2 className="text-lg font-semibold text-gray-900">Description</h2>
-                  <p className="mt-2 text-gray-600 whitespace-pre-line">{service.description}</p>
-                </div>
-                
-                {/* Provider Info */}
-                <div className="mt-8 border-t border-gray-200 pt-6">
-                  <h2 className="text-lg font-semibold text-gray-900">About the Provider</h2>
-                  <div className="mt-4 flex items-start">
-                    <div className="relative h-16 w-16 rounded-full overflow-hidden">
-                      {service.provider.profileImage ? (
-                        <Image
-                          src={service.provider.profileImage}
-                          alt={service.provider.name}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="bg-gray-300 h-full w-full flex items-center justify-center">
-                          <UserIcon className="h-8 w-8 text-gray-500" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-md font-medium text-gray-900">{service.provider.name}</h3>
-                      {service.provider.location && (
-                        <p className="text-sm text-gray-600">
-                          <MapPinIcon className="inline-block h-4 w-4 mr-1" />
-                          {service.provider.location}
-                        </p>
-                      )}
-                      {service.provider.bio && (
-                        <p className="mt-2 text-sm text-gray-600">{service.provider.bio}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Reviews Section */}
-            <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Reviews</h2>
-              
-              {reviews.length > 0 ? (
-                <div className="space-y-6">
-                  {reviews.map((review) => (
-                    <div key={review._id} className="border-b border-gray-200 pb-6 last:border-b-0">
-                      <div className="flex items-start">
-                        <div className="relative h-10 w-10 rounded-full overflow-hidden">
-                          {review.customer.profileImage ? (
-                            <Image
-                              src={review.customer.profileImage}
-                              alt={review.customer.name}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="bg-gray-300 h-full w-full flex items-center justify-center">
-                              <UserIcon className="h-5 w-5 text-gray-500" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="ml-4 flex-1">
-                          <div className="flex justify-between">
-                            <h3 className="text-sm font-medium text-gray-900">{review.customer.name}</h3>
-                            <p className="text-sm text-gray-500">
-                              {new Date(review.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="flex items-center mt-1">
-                            {[0, 1, 2, 3, 4].map((star) => (
-                              <StarIcon
-                                key={star}
-                                className={`h-4 w-4 ${
-                                  star < review.rating ? 'text-yellow-400' : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <p className="mt-2 text-sm text-gray-600">{review.comment}</p>
-                          
-                          {review.reply && (
-                            <div className="mt-4 bg-gray-50 p-3 rounded-md">
-                              <p className="text-xs font-medium text-gray-900 mb-1">Response from {service.provider.name}</p>
-                              <p className="text-sm text-gray-600">{review.reply}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Breadcrumbs */}
+      <nav className="mb-8">
+        <ol className="flex text-sm text-gray-500">
+          <li className="flex items-center">
+            <Link href="/" className="hover:text-blue-600">Home</Link>
+            <span className="mx-2">/</span>
+          </li>
+          <li className="flex items-center">
+            <Link href="/services" className="hover:text-blue-600">Services</Link>
+            <span className="mx-2">/</span>
+          </li>
+          <li className="text-gray-900 font-medium truncate">
+            {service.title}
+          </li>
+        </ol>
+      </nav>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        {/* Left column - Images */}
+        <div className="lg:col-span-2">
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            {/* Main image */}
+            <div className="relative h-96 bg-gray-200">
+              {selectedImage ? (
+                <Image
+                  src={selectedImage}
+                  alt={service.title}
+                  fill
+                  className="object-cover"
+                />
               ) : (
-                <p className="text-gray-600">No reviews yet.</p>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-gray-400">No image available</span>
+                </div>
               )}
             </div>
-          </div>
-          
-          {/* Booking Form */}
-          <div className="lg:col-span-1">
-            {isLoggedIn && userRole === 'customer' ? (
-              <div className="sticky top-24">
-                <BookingForm
-                  serviceId={service._id}
-                  serviceName={service.title}
-                  price={service.price}
-                  onSubmit={handleBookingSubmit}
-                />
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4">Interested in this service?</h2>
-                <p className="text-gray-600 mb-6">
-                  {!isLoggedIn
-                    ? 'Please log in to book this service.'
-                    : 'Only customers can book services.'}
-                </p>
-                <button
-                  onClick={() => router.push('/login')}
-                  className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none"
-                >
-                  {!isLoggedIn ? 'Log In to Book' : 'Switch to Customer Account'}
-                </button>
+
+            {/* Thumbnail images */}
+            {service.images && service.images.length > 1 && (
+              <div className="p-4 grid grid-cols-5 gap-2">
+                {service.images.map((image: string, index: number) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(image)}
+                    className={`relative h-16 bg-gray-200 rounded-md overflow-hidden ${
+                      selectedImage === image ? 'ring-2 ring-blue-500' : ''
+                    }`}
+                    aria-label={`View image ${index + 1}`}
+                  >
+                    <Image
+                      src={image}
+                      alt={`${service.title} - image ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
               </div>
             )}
           </div>
+
+          {/* Service details */}
+          <div className="mt-8 bg-white shadow-md rounded-lg p-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">{service.title}</h1>
+            
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                <span className="ml-1 text-gray-700">{service.rating || 'New'}</span>
+              </div>
+              <div className="text-gray-500">|</div>
+              <div className="text-gray-700 capitalize">{service.category}</div>
+              <div className="text-gray-500">|</div>
+              <div className="flex items-center text-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {service.location}
+              </div>
+            </div>
+
+            <div className="prose max-w-none mb-8">
+              <h2 className="text-xl font-semibold mb-2">Description</h2>
+              <p className="text-gray-700 whitespace-pre-line">{service.description}</p>
+            </div>
+
+            {service.features && service.features.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4">Features</h2>
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {service.features.map((feature: string, index: number) => (
+                    <li key={index} className="flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {service.availability && (
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-2">Availability</h2>
+                <p className="text-gray-700">
+                  {typeof service.availability === 'object' && service.availability.startDate && service.availability.endDate ? 
+                    `Available from ${new Date(service.availability.startDate).toLocaleDateString()} to ${new Date(service.availability.endDate).toLocaleDateString()}` : 
+                    String(service.availability)
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right column - Booking and Provider Info */}
+        <div className="lg:col-span-1">
+          {/* Booking Section */}
+          {showBookingForm ? (
+            <BookingForm 
+              serviceId={service._id}
+              serviceName={service.title}
+              price={service.price}
+              priceType={service.priceType}
+            />
+          ) : (
+            <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Price</h2>
+                <div className="text-2xl font-bold text-blue-600">{getPriceText()}</div>
+              </div>
+              
+              <p className="text-gray-500 mb-6">
+                {service.priceType === 'hourly' 
+                  ? 'per hour' 
+                  : service.priceType === 'starting_at' 
+                    ? 'starting at' 
+                    : 'fixed price'}
+              </p>
+
+              <button
+                onClick={handleBookNow}
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Book Now
+              </button>
+              
+              <div className="mt-4 text-center text-sm text-gray-500">
+                No payment required until service is confirmed
+              </div>
+            </div>
+          )}
+
+          {/* Provider Info Card */}
+          {service.provider && (
+            <div className="bg-white shadow-md rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">About the Provider</h2>
+              
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 relative mr-4">
+                  {service.provider.profileImage ? (
+                    <Image
+                      src={service.provider.profileImage}
+                      alt={service.provider.name || 'Provider'}
+                      fill
+                      className="rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-200 rounded-full flex items-center justify-center">
+                      <span className="text-gray-500 font-medium text-xl">
+                        {service.provider.name ? service.provider.name.charAt(0) : '?'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-medium">{service.provider.name || 'Provider'}</h3>
+                  <p className="text-sm text-gray-500">Service Provider</p>
+                </div>
+              </div>
+              
+              {service.provider.bio && (
+                <p className="text-gray-700 mb-4">{service.provider.bio}</p>
+              )}
+              
+              <Link
+                href={`/providers/${service.provider._id}`}
+                className="inline-block text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                View Profile
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
