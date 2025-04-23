@@ -185,10 +185,10 @@ export default function BookingsPage() {
                 <div className="sm:flex sm:justify-between sm:items-start">
                   <div className="flex items-start">
                     <div className="relative h-20 w-20 rounded-md overflow-hidden bg-gray-200 flex-shrink-0">
-                      {booking.service.images && booking.service.images.length > 0 ? (
+                      {booking.service?.images && booking.service?.images.length > 0 ? (
                         <Image
-                          src={booking.service.images[0]}
-                          alt={booking.service.title}
+                          src={booking.service?.images[0]}
+                          alt={booking.service?.title}
                           fill
                           className="object-cover"
                         />
@@ -199,7 +199,7 @@ export default function BookingsPage() {
                       )}
                     </div>
                     <div className="ml-4">
-                      <h2 className="text-lg font-medium text-gray-900">{booking.service.title}</h2>
+                      <h2 className="text-lg font-medium text-gray-900">{booking.service?.title}</h2>
                       <p className="text-sm text-gray-500 mt-1">
                         Booked for: {formatDate(booking.startDate)}
                       </p>

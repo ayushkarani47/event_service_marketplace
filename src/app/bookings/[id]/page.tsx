@@ -7,6 +7,8 @@ import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { getBookingById, updateBookingStatus } from '@/lib/bookingClient';
 import { Booking } from '@/lib/bookingClient';
+import ReviewForm from '@/components/ReviewForm';
+import { getServiceReviews, Review } from '@/lib/reviewClient';
 
 export default function BookingDetailsPage() {
   const { id } = useParams();
@@ -19,6 +21,8 @@ export default function BookingDetailsPage() {
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
   const [providerNotes, setProviderNotes] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [userReview, setUserReview] = useState<Review | null>(null);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   useEffect(() => {
     // Redirect if not authenticated
@@ -28,7 +32,7 @@ export default function BookingDetailsPage() {
     }
     
     const fetchBooking = async () => {
-      if (!token) return;
+      if (!token || !id) return;
       
       try {
         setLoading(true);
@@ -36,6 +40,21 @@ export default function BookingDetailsPage() {
         const fetchedBooking = await getBookingById(id.toString(), token);
         setBooking(fetchedBooking);
         setProviderNotes(fetchedBooking.providerNotes || '');
+        
+        // Check if user has already reviewed this booking
+        if (fetchedBooking.status === 'completed') {
+          try {
+            const serviceReviews = await getServiceReviews(fetchedBooking.service._id);
+            const existingReview = serviceReviews.find(
+              review => review.booking === id.toString() && review.customer?._id === user?._id
+            );
+            if (existingReview) {
+              setUserReview(existingReview);
+            }
+          } catch (error) {
+            console.error('Error fetching reviews:', error);
+          }
+        }
       } catch (err: any) {
         console.error('Error fetching booking:', err);
         setError(err.message || 'Failed to load booking details');
@@ -47,10 +66,10 @@ export default function BookingDetailsPage() {
     if (token) {
       fetchBooking();
     }
-  }, [id, token, isAuthenticated, router]);
+  }, [id, token, isAuthenticated, router, user?._id, reviewSubmitted]);
 
   const handleStatusUpdate = async (newStatus: 'confirmed' | 'completed' | 'cancelled' | 'rejected') => {
-    if (!token || !booking) return;
+    if (!token || !booking || !id) return;
     
     try {
       setStatusUpdateLoading(true);
@@ -72,6 +91,11 @@ export default function BookingDetailsPage() {
     } finally {
       setStatusUpdateLoading(false);
     }
+  };
+
+  const handleReviewSubmitted = () => {
+    setReviewSubmitted(true);
+    setSuccessMessage("Thank you for your review!");
   };
 
   const formatDate = (dateString: string) => {
@@ -312,9 +336,69 @@ export default function BookingDetailsPage() {
                 </div>
               </div>
             )}
+
+            {/* Review Section for Customers with Completed Bookings */}
+            {isCustomer && booking.status === 'completed' && !userReview && !reviewSubmitted && (
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Leave a Review</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Share your experience with this service to help other customers make informed decisions.
+                </p>
+                <ReviewForm 
+                  bookingId={booking._id} 
+                  serviceId={booking.service._id} 
+                  onReviewSubmitted={handleReviewSubmitted} 
+                />
+              </div>
+            )}
+
+            {/* Show existing review */}
+            {isCustomer && userReview && (
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Your Review</h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center mb-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <svg
+                        key={star}
+                        xmlns="http://www.w3.org/2000/svg"
+                        className={`h-5 w-5 ${
+                          star <= userReview.rating ? 'text-yellow-400' : 'text-gray-300'
+                        }`}
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                    <span className="ml-2 text-sm text-gray-600">
+                      {new Date(userReview.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-gray-700">{userReview.comment}</p>
+                  
+                  {userReview.reply && (
+                    <div className="mt-3 bg-white p-3 rounded border border-gray-200">
+                      <p className="text-xs font-medium text-gray-900 mb-1">Response from service provider:</p>
+                      <p className="text-sm text-gray-700">{userReview.reply}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Thank you message after submitting review */}
+            {isCustomer && reviewSubmitted && !userReview && (
+              <div className="border-t border-gray-200 pt-6">
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <p className="text-green-700 font-medium">Thank you for your review!</p>
+                  <p className="text-green-600 text-sm mt-1">Your feedback helps improve our services and assists other customers.</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}
