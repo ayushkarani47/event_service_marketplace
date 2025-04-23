@@ -4,10 +4,18 @@ import { getServiceReviews } from '@/lib/api/reviewService';
 // GET /api/services/:id/reviews - Get reviews for a service
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id?: string } }
 ) {
   try {
-    const serviceId = params.id;
+    // Check if id exists in params
+    if (!context.params || !context.params.id) {
+      return NextResponse.json(
+        { message: 'Service ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const serviceId = context.params.id;
     
     // Get reviews for service
     const reviews = await getServiceReviews(serviceId);

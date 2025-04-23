@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Bars3Icon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, XMarkIcon, UserCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -62,6 +62,12 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, onLogout }) => {
               <Link href="/contact" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
                 Contact
               </Link>
+              {isLoggedIn && (
+                <Link href="/chats" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 flex items-center">
+                  <ChatBubbleLeftRightIcon className="h-5 w-5 mr-1" />
+                  Chats
+                </Link>
+              )}
             </div>
           </div>
 
@@ -156,6 +162,13 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, onLogout }) => {
             <Link href="/contact" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
               Contact
             </Link>
+            
+            {isLoggedIn && (
+              <Link href="/chats" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 flex items-center">
+                <ChatBubbleLeftRightIcon className="h-5 w-5 mr-1" />
+                Chats
+              </Link>
+            )}
             
             {isLoggedIn ? (
               <>

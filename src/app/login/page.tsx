@@ -15,6 +15,7 @@ export default function LoginPage() {
     password: '',
   });
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [redirectPath, setRedirectPath] = useState('/');
 
   useEffect(() => {
     // Check if user just registered successfully
@@ -23,11 +24,17 @@ export default function LoginPage() {
       setRegistrationSuccess(true);
     }
 
+    // Get redirect path if available
+    const redirect = searchParams.get('redirect');
+    if (redirect) {
+      setRedirectPath(redirect);
+    }
+
     // Redirect if already authenticated
     if (isAuthenticated) {
-      router.push('/');
+      router.push(redirectPath);
     }
-  }, [isAuthenticated, router, searchParams]);
+  }, [isAuthenticated, router, searchParams, redirectPath]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -45,7 +52,7 @@ export default function LoginPage() {
     
     const success = await login(formData.email, formData.password);
     if (success) {
-      router.push('/');
+      router.push(redirectPath);
     }
   };
 

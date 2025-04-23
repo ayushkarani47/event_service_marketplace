@@ -10,6 +10,7 @@ import { getServiceById } from '@/lib/serviceClient';
 import { useAuth } from '@/context/AuthContext';
 import ReviewList from '@/components/ReviewList';
 import RatingDisplay from '@/components/RatingDisplay';
+import ChatButton from '@/components/chat/ChatButton';
 
 interface Service {
   _id: string;
@@ -352,6 +353,14 @@ const ServiceDetailsPage = () => {
               >
                 View Profile
               </Link>
+              <div className="mt-4">
+                <ChatButton 
+                  receiverId={service.provider._id}
+                  receiverName={getProviderName()}
+                  receiverImage={service.provider.profilePicture}
+                  serviceId={service._id}
+                />
+              </div>
             </div>
           )}
         </div>

@@ -2,7 +2,7 @@ import connectDB from '../db';
 import Review from '../../models/Review';
 import Booking from '../../models/Booking';
 import Service from '../../models/Service';
-import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 
 /**
  * Create a new review
@@ -43,8 +43,9 @@ export async function createReview(reviewData: any, user: any) {
   }
 
   // Add service and provider to review
-  reviewData.service = booking.service._id;
-  reviewData.provider = booking.service.provider;
+  const serviceDoc = booking.service as any;
+  reviewData.service = serviceDoc._id;
+  reviewData.provider = serviceDoc.provider;
   reviewData.customer = user._id;
 
   // Check if review already exists

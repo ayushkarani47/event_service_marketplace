@@ -47,14 +47,34 @@ export async function GET(
     }
 
     // Check if the user has permission to view this booking
-    const isCustomer = booking.customer._id.toString() === userData.sub;
-    const isProvider = userData.role === 'service_provider' && booking.service.provider.toString() === userData.sub;
+    // Handle populated documents by safely accessing IDs with proper type handling
+    let customerId = '';
+    if (booking.customer) {
+      // Handle both populated and non-populated cases
+      customerId = 'firstName' in booking.customer 
+        ? (booking.customer as unknown as { _id: { toString(): string } })._id.toString()
+        : booking.customer.toString();
+    }
+    
+    let providerId = '';
+    if (booking.service) {
+      // Handle both populated and non-populated cases for service
+      const service = booking.service as unknown as { provider?: { toString(): string } | { _id: { toString(): string } } };
+      if (service.provider) {
+        providerId = 'toString' in service.provider 
+          ? service.provider.toString()
+          : (service.provider as { _id: { toString(): string } })._id.toString();
+      }
+    }
+    
+    const isCustomer = customerId === userData.sub;
+    const isProvider = userData.role === 'service_provider' && providerId === userData.sub;
     const isAdmin = userData.role === 'admin';
 
     console.log('User ID from token:', userData.sub);
     console.log('User role from token:', userData.role);
-    console.log('Customer ID from booking:', booking.customer._id.toString());
-    console.log('Provider ID from booking:', booking.service.provider.toString());
+    console.log('Customer ID from booking:', customerId);
+    console.log('Provider ID from booking:', providerId);
     console.log('Permission check:', { isCustomer, isProvider, isAdmin });
 
     if (!isCustomer && !isProvider && !isAdmin) {
@@ -132,8 +152,28 @@ export async function PATCH(
     }
 
     // Check permissions for status update
-    const isCustomer = booking.customer.toString() === userData.sub;
-    const isProvider = userData.role === 'service_provider' && booking.service.provider.toString() === userData.sub;
+    // Handle populated documents by safely accessing IDs with proper type handling
+    let customerId = '';
+    if (booking.customer) {
+      // Handle both populated and non-populated cases
+      customerId = 'firstName' in booking.customer 
+        ? (booking.customer as unknown as { _id: { toString(): string } })._id.toString()
+        : booking.customer.toString();
+    }
+    
+    let providerId = '';
+    if (booking.service) {
+      // Handle both populated and non-populated cases for service
+      const service = booking.service as unknown as { provider?: { toString(): string } | { _id: { toString(): string } } };
+      if (service.provider) {
+        providerId = 'toString' in service.provider 
+          ? service.provider.toString()
+          : (service.provider as { _id: { toString(): string } })._id.toString();
+      }
+    }
+    
+    const isCustomer = customerId === userData.sub;
+    const isProvider = userData.role === 'service_provider' && providerId === userData.sub;
     const isAdmin = userData.role === 'admin';
 
     if (!isCustomer && !isProvider && !isAdmin) {

@@ -22,6 +22,7 @@ interface AuthContextType {
   logout: () => void;
   error: string | null;
   clearError: () => void;
+  refreshToken: () => Promise<boolean>;
 }
 
 interface RegisterData {
@@ -41,6 +42,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Set token in cookie with proper attributes
+  const setCookie = (token: string) => {
+    // Set secure and SameSite attributes for production
+    const isProduction = process.env.NODE_ENV === 'production';
+    const secure = isProduction ? '; Secure' : '';
+    const sameSite = isProduction ? '; SameSite=Strict' : '; SameSite=Lax';
+    
+    // Set token cookie with 7 day expiration
+    document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}${secure}${sameSite}`;
+  };
+
   useEffect(() => {
     // Check if user is already logged in
     const storedToken = localStorage.getItem('token');
@@ -49,6 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
+      
+      // Ensure cookie is set if token exists in localStorage
+      setCookie(storedToken);
     }
 
     setIsLoading(false);
@@ -76,6 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Store token and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Set token in cookie for middleware authentication
+      setCookie(data.token);
 
       setToken(data.token);
       setUser(data.user);
@@ -119,9 +137,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    // Remove token cookie
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    
     setToken(null);
     setUser(null);
     router.push('/login');
+  };
+
+  const refreshToken = async (): Promise<boolean> => {
+    // If we don't have a token in state but it exists in localStorage, restore it
+    const storedToken = localStorage.getItem('token');
+    if (!token && storedToken) {
+      setToken(storedToken);
+      setCookie(storedToken);
+      
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+      
+      return true;
+    }
+    
+    // If we have a token in state but not in cookie, restore the cookie
+    const tokenCookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('token='));
+      
+    if (token && !tokenCookie) {
+      setCookie(token);
+      return true;
+    }
+    
+    return false;
   };
 
   const clearError = () => {
@@ -140,6 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         error,
         clearError,
+        refreshToken,
       }}
     >
       {children}
@@ -153,4 +204,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+}
