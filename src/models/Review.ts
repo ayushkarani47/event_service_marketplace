@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Model } from 'mongoose';
 import { IService } from './Service';
 import { IBooking } from './Booking';
 import { IUser } from './User';
@@ -63,7 +63,7 @@ reviewSchema.index({ booking: 1, customer: 1 }, { unique: true });
 
 // Calculate average ratings after saving a review
 reviewSchema.post('save', async function() {
-  const model = this.constructor as any;
+  const model = this.constructor as Model<IReview>;
   
   try {
     // Calculate average rating

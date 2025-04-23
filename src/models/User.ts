@@ -26,7 +26,7 @@ interface IUserMethods {
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
-type UserModel = Model<IUser, {}, IUserMethods>;
+type UserModel = Model<IUser, object, IUserMethods>;
 
 const UserSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
@@ -91,8 +91,8 @@ UserSchema.pre('save', async function (next) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
-  } catch (error: any) {
-    next(error);
+  } catch (error: unknown) {
+    next(error instanceof Error ? error : new Error('Password hashing failed'));
   }
 });
 

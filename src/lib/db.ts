@@ -12,16 +12,25 @@ const MONGODB_URI = process.env.MONGODB_URI;
  * during API Route usage.
  */
 declare global {
+  // eslint-disable-next-line no-var
   var mongoose: {
     conn: mongoose.Connection | null;
     promise: Promise<mongoose.Connection> | null;
-  };
+  } | undefined;
 }
 
-let cached = global.mongoose;
+// Use type assertion to avoid TypeScript errors
+const globalWithMongoose = global as typeof globalThis & {
+  mongoose?: {
+    conn: mongoose.Connection | null;
+    promise: Promise<mongoose.Connection> | null;
+  }
+};
+
+let cached = globalWithMongoose.mongoose || { conn: null, promise: null };
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  cached = globalWithMongoose.mongoose = { conn: null, promise: null };
 }
 
 async function connectDB() {
@@ -49,4 +58,4 @@ async function connectDB() {
   return cached.conn;
 }
 
-export default connectDB; 
+export default connectDB;

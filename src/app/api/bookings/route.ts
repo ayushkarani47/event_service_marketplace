@@ -70,10 +70,11 @@ export async function POST(request: NextRequest) {
       booking: newBooking
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating booking:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error creating booking';
     return NextResponse.json(
-      { message: error.message || 'Error creating booking' },
+      { message: errorMessage },
       { status: 500 }
     );
   }
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
     console.log('User role from token:', role);
     console.log('User ID from token:', userData.sub);
 
-    let query: any = {};
+    const query: Record<string, any> = {};
 
     // Filter bookings based on user role
     if (role === 'customer') {
@@ -146,10 +147,11 @@ export async function GET(request: NextRequest) {
       bookings
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching bookings:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error fetching bookings';
     return NextResponse.json(
-      { message: error.message || 'Error fetching bookings' },
+      { message: errorMessage },
       { status: 500 }
     );
   }

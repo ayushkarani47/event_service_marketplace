@@ -46,10 +46,11 @@ export async function GET(req: NextRequest) {
       { user },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error('Auth me error:', error);
+  } catch (error: unknown) {
+    console.error('Error fetching user:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred';
     return NextResponse.json(
-      { message: error.message || 'An error occurred while fetching user data' },
+      { message: errorMessage },
       { status: 500 }
     );
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -18,7 +18,8 @@ const categories = [
   { value: 'other', label: 'Other' },
 ];
 
-export default function ServicesPage() {
+// Client component that uses useSearchParams
+function ServicesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [services, setServices] = useState<IService[]>([]);
@@ -117,12 +118,11 @@ export default function ServicesPage() {
                 type="text"
                 id="searchTerm"
                 className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="Search for services..."
+                placeholder="Search by name or description"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-
             <div>
               <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
                 Category
@@ -133,14 +133,13 @@ export default function ServicesPage() {
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
-                {categories.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
+                {categories.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
                   </option>
                 ))}
               </select>
             </div>
-
             <div>
               <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
                 Location
@@ -149,7 +148,7 @@ export default function ServicesPage() {
                 type="text"
                 id="location"
                 className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="City, state or 'online'"
+                placeholder="City or area"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
@@ -173,7 +172,6 @@ export default function ServicesPage() {
                 <option value="4.5">4.5+ Stars</option>
               </select>
             </div>
-
             <div>
               <label htmlFor="minPrice" className="block text-sm font-medium text-gray-700 mb-1">
                 Min Price ($)
@@ -185,10 +183,8 @@ export default function ServicesPage() {
                 placeholder="Min price"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
-                min="0"
               />
             </div>
-
             <div>
               <label htmlFor="maxPrice" className="block text-sm font-medium text-gray-700 mb-1">
                 Max Price ($)
@@ -200,7 +196,6 @@ export default function ServicesPage() {
                 placeholder="Max price"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
-                min="0"
               />
             </div>
           </div>
@@ -209,7 +204,7 @@ export default function ServicesPage() {
             <button
               type="button"
               onClick={clearFilters}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
             >
               Clear Filters
             </button>
@@ -297,4 +292,24 @@ export default function ServicesPage() {
       )}
     </div>
   );
-} 
+}
+
+// Loading fallback
+function ServicesLoading() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Event Services</h1>
+      <div className="flex justify-center items-center h-64">
+        <div className="text-xl font-semibold">Loading services...</div>
+      </div>
+    </div>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={<ServicesLoading />}>
+      <ServicesContent />
+    </Suspense>
+  );
+}

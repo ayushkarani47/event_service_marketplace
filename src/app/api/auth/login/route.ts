@@ -61,10 +61,11 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Login error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';
     return NextResponse.json(
-      { message: error.message || 'An error occurred during login' },
+      { message: errorMessage },
       { status: 500 }
     );
   }
