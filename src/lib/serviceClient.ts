@@ -1,6 +1,7 @@
 import { IService } from '@/models/Service';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+// Use relative URL by default, which will work in both development and production
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export interface ServiceFormData {
   title: string;
