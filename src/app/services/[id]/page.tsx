@@ -27,8 +27,10 @@ interface Service {
   };
   provider: {
     _id: string;
-    name: string;
-    profileImage?: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    profilePicture?: string;
     bio?: string;
     location?: string;
   };
@@ -129,6 +131,23 @@ const ServiceDetailsPage = () => {
       default:
         return `$${service.price}`;
     }
+  };
+
+  const getProviderName = () => {
+    if (!service.provider) return 'Provider';
+    if (service.provider.firstName && service.provider.lastName) {
+      return `${service.provider.firstName} ${service.provider.lastName}`;
+    }
+    if (service.provider.firstName) return service.provider.firstName;
+    if (service.provider.lastName) return service.provider.lastName;
+    return 'Provider';
+  };
+
+  const getProviderInitial = () => {
+    if (!service.provider) return '?';
+    if (service.provider.firstName) return service.provider.firstName.charAt(0);
+    if (service.provider.lastName) return service.provider.lastName.charAt(0);
+    return '?';
   };
 
   return (
@@ -265,7 +284,7 @@ const ServiceDetailsPage = () => {
           ) : (
             <div className="bg-white shadow-md rounded-lg p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Price</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Price</h2>
                 <div className="text-2xl font-bold text-blue-600">{getPriceText()}</div>
               </div>
               
@@ -293,27 +312,27 @@ const ServiceDetailsPage = () => {
           {/* Provider Info Card */}
           {service.provider && (
             <div className="bg-white shadow-md rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">About the Provider</h2>
+              <h2 className="text-xl font-semibold mb-4" style={{ color: '#000' }}>About the Provider</h2>
               
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 relative mr-4">
-                  {service.provider.profileImage ? (
+                  {service.provider.profilePicture ? (
                     <Image
-                      src={service.provider.profileImage}
-                      alt={service.provider.name || 'Provider'}
+                      src={service.provider.profilePicture}
+                      alt={getProviderName()}
                       fill
                       className="rounded-full object-cover"
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-200 rounded-full flex items-center justify-center">
                       <span className="text-gray-500 font-medium text-xl">
-                        {service.provider.name ? service.provider.name.charAt(0) : '?'}
+                        {getProviderInitial()}
                       </span>
                     </div>
                   )}
                 </div>
                 <div>
-                  <h3 className="font-medium">{service.provider.name || 'Provider'}</h3>
+                  <h3 className="font-medium text-gray-900">{getProviderName()}</h3>
                   <p className="text-sm text-gray-500">Service Provider</p>
                 </div>
               </div>
