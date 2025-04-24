@@ -113,7 +113,7 @@ export default function HomePage() {
                 type="text"
                 name="search"
                 placeholder="What service are you looking for?"
-                className="flex-grow px-5 py-3 rounded-l-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-grow px-5 py-3 rounded-l-md text-gray-400 bg-white/10 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="submit"
