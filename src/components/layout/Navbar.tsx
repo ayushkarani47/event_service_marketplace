@@ -1,7 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Bars3Icon, XMarkIcon, UserCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Button, 
+  IconButton, 
+  Drawer, 
+  List, 
+  ListItemButton,
+  ListItemText,
+  Box, 
+  Container, 
+  Menu, 
+  MenuItem, 
+  Avatar, 
+  Divider, 
+  useScrollTrigger, 
+  Slide
+} from '@mui/material';
+import { 
+  Menu as MenuIcon, 
+  Close as CloseIcon, 
+  AccountCircle, 
+  Chat as ChatIcon
+} from '@mui/icons-material';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -9,205 +33,266 @@ interface NavbarProps {
   onLogout: () => void;
 }
 
+function HideOnScroll(props: { children: React.ReactElement }) {
+  const { children } = props;
+  const trigger = useScrollTrigger();
+
+  return (
+    <Slide appear={false} direction="down" in={!trigger}>
+      {children}
+    </Slide>
+  );
+}
+
 const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, onLogout }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
+  const handleDrawerToggle = () => {
+    setDrawerOpen(!drawerOpen);
   };
 
-  const toggleProfile = () => {
-    setIsProfileOpen(!isProfileOpen);
+  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    handleClose();
+    onLogout();
   };
 
   return (
-    <nav className={`fixed w-full z-10 transition-all duration-300 ${scrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center">
-              <span className="text-xl font-bold text-blue-600">EventHub</span>
-            </Link>
-          </div>
+    <>
+      <HideOnScroll>
+        <AppBar position="fixed" color="default" elevation={1} sx={{ backgroundColor: 'white' }}>
+          <Container maxWidth="lg">
+            <Toolbar disableGutters>
+              {/* Logo */}
+              <Typography
+                variant="h6"
+                component={Link}
+                href="/"
+                sx={{
+                  mr: 2,
+                  display: 'flex',
+                  fontWeight: 700,
+                  color: 'primary.main',
+                  textDecoration: 'none',
+                  flexGrow: { xs: 1, md: 0 }
+                }}
+              >
+                EventHub
+              </Typography>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-center space-x-4">
-              <Link href="/" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
-                Home
-              </Link>
-              <Link href="/services" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
-                Services
-              </Link>
-              {isLoggedIn && userRole === 'service_provider' && (
-                <Link href="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
-                  Dashboard
-                </Link>
-              )}
-              <Link href="/about" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
-                About
-              </Link>
-              <Link href="/contact" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
-                Contact
-              </Link>
-              {isLoggedIn && (
-                <Link href="/chats" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 flex items-center">
-                  <ChatBubbleLeftRightIcon className="h-5 w-5 mr-1" />
-                  Chats
-                </Link>
-              )}
-            </div>
-          </div>
+              {/* Desktop Navigation */}
+              <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, ml: 2 }}>
+                <Button component={Link} href="/" color="inherit" sx={{ mx: 1 }}>
+                  Home
+                </Button>
+                <Button component={Link} href="/services" color="inherit" sx={{ mx: 1 }}>
+                  Services
+                </Button>
+                {isLoggedIn && userRole === 'service_provider' && (
+                  <Button component={Link} href="/dashboard" color="inherit" sx={{ mx: 1 }}>
+                    Dashboard
+                  </Button>
+                )}
+                <Button component={Link} href="/about" color="inherit" sx={{ mx: 1 }}>
+                  About
+                </Button>
+                <Button component={Link} href="/contact" color="inherit" sx={{ mx: 1 }}>
+                  Contact
+                </Button>
+                {isLoggedIn && (
+                  <Button 
+                    component={Link} 
+                    href="/chats" 
+                    color="inherit" 
+                    sx={{ mx: 1 }}
+                    startIcon={<ChatIcon />}
+                  >
+                    Chats
+                  </Button>
+                )}
+              </Box>
 
-          {/* User Authentication */}
-          <div className="hidden md:block">
-            {isLoggedIn ? (
-              <div className="relative ml-3">
-                <button
-                  onClick={toggleProfile}
-                  className="flex items-center text-sm rounded-full focus:outline-none"
-                  aria-label="Open user menu"
-                  title="User menu"
-                >
-                  <UserCircleIcon className="h-8 w-8 text-gray-600" />
-                </button>
-
-                {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5">
-                    <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                      Profile
-                    </Link>
-                    <Link href="/bookings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                      My Bookings
-                    </Link>
-                    {userRole === 'service_provider' && (
-                      <Link href="/services/manage" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Manage Services
-                      </Link>
-                    )}
-                    <button 
-                      onClick={onLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              {/* User Authentication */}
+              <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+                {isLoggedIn ? (
+                  <>
+                    <IconButton
+                      onClick={handleMenu}
+                      size="large"
+                      edge="end"
+                      color="inherit"
+                      aria-label="account"
+                      aria-controls="menu-appbar"
+                      aria-haspopup="true"
                     >
-                      Logout
-                    </button>
-                  </div>
+                      <AccountCircle />
+                    </IconButton>
+                    <Menu
+                      id="menu-appbar"
+                      anchorEl={anchorEl}
+                      anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'right',
+                      }}
+                      keepMounted
+                      transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                      }}
+                      open={open}
+                      onClose={handleClose}
+                    >
+                      <MenuItem component={Link} href="/profile" onClick={handleClose}>
+                        Profile
+                      </MenuItem>
+                      <MenuItem component={Link} href="/bookings" onClick={handleClose}>
+                        My Bookings
+                      </MenuItem>
+                      {userRole === 'service_provider' && (
+                        <MenuItem component={Link} href="/services/manage" onClick={handleClose}>
+                          Manage Services
+                        </MenuItem>
+                      )}
+                      <Divider />
+                      <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                    </Menu>
+                  </>
+                ) : (
+                  <Box sx={{ display: 'flex' }}>
+                    <Button component={Link} href="/login" color="inherit" sx={{ mr: 1 }}>
+                      Login
+                    </Button>
+                    <Button
+                      component={Link}
+                      href="/register"
+                      variant="contained"
+                      color="primary"
+                    >
+                      Register
+                    </Button>
+                  </Box>
                 )}
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Link href="/login" className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-blue-600">
-                  Login
-                </Link>
-                <Link
-                  href="/register"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
-          </div>
+              </Box>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-blue-600 focus:outline-none"
-              aria-controls="mobile-menu"
-              aria-label="Toggle menu"
-              onClick={toggleMenu}
-            >
-              <span className="sr-only">Open main menu</span>
-              {isMenuOpen ? (
-                <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-              ) : (
-                <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
+              {/* Mobile menu button */}
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="end"
+                onClick={handleDrawerToggle}
+                sx={{ display: { md: 'none' } }}
+              >
+                {drawerOpen ? <CloseIcon /> : <MenuIcon />}
+              </IconButton>
+            </Toolbar>
+          </Container>
+        </AppBar>
+      </HideOnScroll>
+      <Toolbar /> {/* Empty toolbar to push content below the fixed AppBar */}
 
-      {/* Mobile menu */}
-      {isMenuOpen && (
-        <div className="md:hidden" id="mobile-menu">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white shadow-lg">
-            <Link href="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
-              Home
-            </Link>
-            <Link href="/services" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
-              Services
-            </Link>
+      {/* Mobile drawer */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={handleDrawerToggle}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
+        }}
+      >
+        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+            <IconButton onClick={handleDrawerToggle}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <List>
+            <ListItemButton component={Link} href="/" onClick={handleDrawerToggle}>
+              <ListItemText primary="Home" />
+            </ListItemButton>
+            <ListItemButton component={Link} href="/services" onClick={handleDrawerToggle}>
+              <ListItemText primary="Services" />
+            </ListItemButton>
             {isLoggedIn && userRole === 'service_provider' && (
-              <Link href="/dashboard" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
-                Dashboard
-              </Link>
+              <ListItemButton component={Link} href="/dashboard" onClick={handleDrawerToggle}>
+                <ListItemText primary="Dashboard" />
+              </ListItemButton>
             )}
-            <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
-              About
-            </Link>
-            <Link href="/contact" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
-              Contact
-            </Link>
-            
+            <ListItemButton component={Link} href="/about" onClick={handleDrawerToggle}>
+              <ListItemText primary="About" />
+            </ListItemButton>
+            <ListItemButton component={Link} href="/contact" onClick={handleDrawerToggle}>
+              <ListItemText primary="Contact" />
+            </ListItemButton>
             {isLoggedIn && (
-              <Link href="/chats" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 flex items-center">
-                <ChatBubbleLeftRightIcon className="h-5 w-5 mr-1" />
-                Chats
-              </Link>
+              <ListItemButton component={Link} href="/chats" onClick={handleDrawerToggle}>
+                <ListItemText 
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <ChatIcon fontSize="small" sx={{ mr: 1 }} />
+                      Chats
+                    </Box>
+                  } 
+                />
+              </ListItemButton>
             )}
-            
-            {isLoggedIn ? (
-              <>
-                <Link href="/profile" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
-                  Profile
-                </Link>
-                <Link href="/bookings" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
-                  My Bookings
-                </Link>
-                {userRole === 'service_provider' && (
-                  <Link href="/services/manage" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
-                    Manage Services
-                  </Link>
-                )}
-                <button 
-                  onClick={onLogout}
-                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <div className="pt-4 flex flex-col space-y-2">
-                <Link href="/login" className="px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">
-                  Login
-                </Link>
-                <Link
-                  href="/register"
-                  className="px-3 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </nav>
+          </List>
+          <Divider sx={{ my: 2 }} />
+          {isLoggedIn ? (
+            <List>
+              <ListItemButton component={Link} href="/profile" onClick={handleDrawerToggle}>
+                <ListItemText primary="Profile" />
+              </ListItemButton>
+              <ListItemButton component={Link} href="/bookings" onClick={handleDrawerToggle}>
+                <ListItemText primary="My Bookings" />
+              </ListItemButton>
+              {userRole === 'service_provider' && (
+                <ListItemButton component={Link} href="/services/manage" onClick={handleDrawerToggle}>
+                  <ListItemText primary="Manage Services" />
+                </ListItemButton>
+              )}
+              <ListItemButton onClick={() => { handleDrawerToggle(); onLogout(); }}>
+                <ListItemText primary="Logout" />
+              </ListItemButton>
+            </List>
+          ) : (
+            <Box sx={{ mt: 'auto', p: 2 }}>
+              <Button
+                component={Link}
+                href="/login"
+                fullWidth
+                variant="outlined"
+                color="primary"
+                sx={{ mb: 1 }}
+                onClick={handleDrawerToggle}
+              >
+                Login
+              </Button>
+              <Button
+                component={Link}
+                href="/register"
+                fullWidth
+                variant="contained"
+                color="primary"
+                onClick={handleDrawerToggle}
+              >
+                Register
+              </Button>
+            </Box>
+          )}
+        </Box>
+      </Drawer>
+    </>
   );
 };
 
-export default Navbar; 
+export default Navbar;

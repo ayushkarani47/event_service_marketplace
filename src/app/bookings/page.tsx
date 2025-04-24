@@ -6,6 +6,24 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { getBookings, Booking } from '@/lib/bookingClient';
+import { 
+  Container, 
+  Typography, 
+  Box, 
+  Tabs, 
+  Tab, 
+  Card, 
+  CardContent, 
+  CardMedia, 
+  CardActions, 
+  Button, 
+  Chip, 
+  Grid, 
+  Divider, 
+  Alert, 
+  CircularProgress,
+  Paper
+} from '@mui/material';
 
 export default function BookingsPage() {
   const router = useRouter();
@@ -15,7 +33,7 @@ export default function BookingsPage() {
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<string>('all');
+  const [tabValue, setTabValue] = useState<string>('all');
 
   useEffect(() => {
     // Redirect if not authenticated
@@ -47,12 +65,16 @@ export default function BookingsPage() {
   }, [token, isAuthenticated, router]);
 
   useEffect(() => {
-    if (filter === 'all') {
+    if (tabValue === 'all') {
       setFilteredBookings(bookings);
+    } else if (tabValue === 'cancelled/rejected') {
+      setFilteredBookings(bookings.filter(booking => 
+        booking.status === 'cancelled' || booking.status === 'rejected'
+      ));
     } else {
-      setFilteredBookings(bookings.filter(booking => booking.status === filter));
+      setFilteredBookings(bookings.filter(booking => booking.status === tabValue));
     }
-  }, [filter, bookings]);
+  }, [tabValue, bookings]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -66,15 +88,15 @@ export default function BookingsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'completed':
-        return 'bg-blue-100 text-blue-800';
+        return 'info';
       case 'cancelled':
-        return 'bg-red-100 text-red-800';
+        return 'error';
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return 'error';
       default:
-        return 'bg-yellow-100 text-yellow-800';
+        return 'warning';
     }
   };
 
@@ -82,160 +104,155 @@ export default function BookingsPage() {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+    setTabValue(newValue);
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-pulse text-xl font-semibold">Loading bookings...</div>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 200px)' }}>
+        <CircularProgress />
+        <Typography variant="h6" sx={{ ml: 2 }}>Loading bookings...</Typography>
+      </Box>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">My Bookings</h1>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+        My Bookings
+      </Typography>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
       )}
 
       {/* Filter Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-6">
-          <button
-            className={`pb-4 px-1 font-medium text-sm ${
-              filter === 'all'
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-            onClick={() => setFilter('all')}
-          >
-            All
-          </button>
-          <button
-            className={`pb-4 px-1 font-medium text-sm ${
-              filter === 'pending'
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-            onClick={() => setFilter('pending')}
-          >
-            Pending
-          </button>
-          <button
-            className={`pb-4 px-1 font-medium text-sm ${
-              filter === 'confirmed'
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-            onClick={() => setFilter('confirmed')}
-          >
-            Confirmed
-          </button>
-          <button
-            className={`pb-4 px-1 font-medium text-sm ${
-              filter === 'completed'
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-            onClick={() => setFilter('completed')}
-          >
-            Completed
-          </button>
-          <button
-            className={`pb-4 px-1 font-medium text-sm ${
-              filter === 'cancelled' || filter === 'rejected'
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-            onClick={() => setFilter('cancelled')}
-          >
-            Cancelled/Rejected
-          </button>
-        </nav>
-      </div>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange} 
+          variant="scrollable"
+          scrollButtons="auto"
+          textColor="primary"
+          indicatorColor="primary"
+        >
+          <Tab label="All" value="all" />
+          <Tab label="Pending" value="pending" />
+          <Tab label="Confirmed" value="confirmed" />
+          <Tab label="Completed" value="completed" />
+          <Tab label="Cancelled/Rejected" value="cancelled/rejected" />
+        </Tabs>
+      </Box>
 
       {/* Bookings List */}
       {filteredBookings.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-6 text-center">
-          <p className="text-gray-500">No bookings found</p>
-          {filter !== 'all' && (
-            <button
-              onClick={() => setFilter('all')}
-              className="mt-2 text-blue-600 hover:text-blue-800 hover:underline"
+        <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+          <Typography color="text.secondary" paragraph>
+            No bookings found
+          </Typography>
+          {tabValue !== 'all' && (
+            <Button 
+              onClick={() => setTabValue('all')}
+              color="primary"
+              sx={{ mb: 2 }}
             >
               View all bookings
-            </button>
+            </Button>
           )}
-          <div className="mt-4">
-            <Link
+          <Box mt={2}>
+            <Button
+              component={Link}
               href="/services"
-              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              variant="contained"
+              color="primary"
             >
               Browse Services
-            </Link>
-          </div>
-        </div>
+            </Button>
+          </Box>
+        </Paper>
       ) : (
-        <div className="space-y-6">
+        <Grid container spacing={3}>
           {filteredBookings.map((booking) => (
-            <div key={booking._id} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-6">
-                <div className="sm:flex sm:justify-between sm:items-start">
-                  <div className="flex items-start">
-                    <div className="relative h-20 w-20 rounded-md overflow-hidden bg-gray-200 flex-shrink-0">
-                      {booking.service?.images && booking.service?.images.length > 0 ? (
-                        <Image
-                          src={booking.service?.images[0]}
-                          alt={booking.service?.title}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full w-full text-gray-500">
-                          <span>No image</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="ml-4">
-                      <h2 className="text-lg font-medium text-gray-900">{booking.service?.title}</h2>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Booked for: {formatDate(booking.startDate)}
-                      </p>
-                      {booking.endDate && booking.startDate !== booking.endDate && (
-                        <p className="text-sm text-gray-500">
-                          To: {formatDate(booking.endDate)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-4 sm:mt-0 sm:ml-6">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                        booking.status
-                      )}`}
-                    >
-                      {getStatusText(booking.status)}
-                    </span>
-                    <p className="text-sm font-medium text-gray-900 mt-2">
-                      ${booking.totalPrice}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 border-t border-gray-200 pt-4 flex justify-end">
-                  <Link
+            <Grid item xs={12} key={booking._id}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'flex-start' } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+                      <Box 
+                        sx={{ 
+                          position: 'relative', 
+                          width: 100, 
+                          height: 100, 
+                          borderRadius: 1, 
+                          overflow: 'hidden',
+                          bgcolor: 'grey.200',
+                          flexShrink: 0
+                        }}
+                      >
+                        {booking.service?.images && booking.service?.images.length > 0 ? (
+                          <Image
+                            src={booking.service?.images[0]}
+                            alt={booking.service?.title || 'Service image'}
+                            fill
+                            style={{ objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
+                            <Typography variant="caption">No image</Typography>
+                          </Box>
+                        )}
+                      </Box>
+                      <Box sx={{ ml: 2, flex: 1 }}>
+                        <Typography variant="h6" component="h2">
+                          {booking.service?.title || 'Service unavailable'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Booked for: {formatDate(booking.startDate)}
+                        </Typography>
+                        {booking.endDate && booking.startDate !== booking.endDate && (
+                          <Typography variant="body2" color="text.secondary">
+                            To: {formatDate(booking.endDate)}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: { xs: 'flex-start', sm: 'flex-end' },
+                      mt: { xs: 2, sm: 0 },
+                      minWidth: { sm: 120 }
+                    }}>
+                      <Chip 
+                        label={getStatusText(booking.status)} 
+                        color={getStatusColor(booking.status) as "success" | "info" | "warning" | "error" | "default"}
+                        size="small"
+                      />
+                      <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: 'medium' }}>
+                        ${booking.totalPrice}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+                <Divider />
+                <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+                  <Button
+                    component={Link}
                     href={`/bookings/${booking._id}`}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                    variant="outlined"
+                    size="small"
                   >
                     View Details
-                  </Link>
-                </div>
-              </div>
-            </div>
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
           ))}
-        </div>
+        </Grid>
       )}
-    </div>
+    </Container>
   );
-} 
+}
