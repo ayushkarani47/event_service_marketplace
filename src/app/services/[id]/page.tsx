@@ -299,15 +299,23 @@ const ServiceDetailsPage = () => {
         {/* Left column - Images and Details */}
         <Box sx={{ flex: '1 1 auto', width: { xs: '100%', md: '66%' } }}>
           <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden', mb: 4 }}>
-            {/* Main image with improved layout */}
-            <Box sx={{ position: 'relative', height: 500, bgcolor: 'grey.100', borderRadius: '8px 8px 0 0', overflow: 'hidden' }}>
+            {/* Main image with improved layout - responsive for mobile */}
+            <Box sx={{ 
+              position: 'relative', 
+              height: { xs: 300, sm: 400, md: 500 }, 
+              bgcolor: 'grey.100', 
+              borderRadius: '8px 8px 0 0', 
+              overflow: 'hidden',
+              width: '100%'
+            }}>
               {selectedImage ? (
                 <>
                   <Image
                     src={selectedImage}
                     alt={service.title}
                     fill
-                    style={{ objectFit: 'cover' }}
+                    sizes="(max-width: 600px) 100vw, (max-width: 960px) 75vw, 1200px"
+                    style={{ objectFit: 'contain', objectPosition: 'center' }}
                     priority
                   />
                   {service.images && service.images.length > 1 && (
@@ -339,12 +347,12 @@ const ServiceDetailsPage = () => {
               )}
             </Box>
 
-            {/* Improved thumbnail gallery */}
+            {/* Improved thumbnail gallery - responsive for mobile */}
             {service.images && service.images.length > 1 && (
               <Box sx={{ 
-                p: 2, 
+                p: { xs: 1, sm: 2 }, 
                 display: 'flex', 
-                gap: 1.5, 
+                gap: { xs: 1, sm: 1.5 }, 
                 overflowX: 'auto',
                 '&::-webkit-scrollbar': {
                   height: '6px',
@@ -353,7 +361,7 @@ const ServiceDetailsPage = () => {
                   backgroundColor: 'rgba(0,0,0,0.2)',
                   borderRadius: '6px',
                 },
-                pb: 3
+                pb: { xs: 2, sm: 3 }
               }}>
                 {service.images.map((image: string, index: number) => (
                   <Box
@@ -362,8 +370,8 @@ const ServiceDetailsPage = () => {
                     onClick={() => setSelectedImage(image)}
                     sx={{
                       position: 'relative',
-                      width: 100,
-                      height: 75,
+                      width: { xs: 70, sm: 90, md: 100 },
+                      height: { xs: 50, sm: 65, md: 75 },
                       borderRadius: 2,
                       overflow: 'hidden',
                       border: 'none',
