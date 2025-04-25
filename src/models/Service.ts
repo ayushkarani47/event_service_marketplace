@@ -93,7 +93,15 @@ ServiceSchema.index({ provider: 1 });
 ServiceSchema.index({ price: 1 });
 ServiceSchema.index({ rating: -1 });
 
-// Prevent mongoose from creating a new model if it already exists
-const Service = mongoose.models.Service || mongoose.model<IService>('Service', ServiceSchema);
+// Fix for the "Schema hasn't been registered for model" error in Next.js
+let Service: Model<IService>;
 
-export default Service; 
+try {
+  // Try to get the existing model
+  Service = mongoose.model<IService>('Service');
+} catch {
+  // Model doesn't exist, so create it
+  Service = mongoose.model<IService>('Service', ServiceSchema);
+}
+
+export default Service;

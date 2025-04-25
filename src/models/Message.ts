@@ -52,7 +52,15 @@ MessageSchema.index({ serviceId: 1 });
 MessageSchema.index({ bookingId: 1 });
 MessageSchema.index({ createdAt: -1 });
 
-// Prevent mongoose from creating a new model if it already exists
-const Message = mongoose.models.Message || mongoose.model<IMessage>('Message', MessageSchema);
+// Fix for the "Schema hasn't been registered for model" error in Next.js
+let Message: Model<IMessage>;
+
+try {
+  // Try to get the existing model
+  Message = mongoose.model<IMessage>('Message');
+} catch {
+  // Model doesn't exist, so create it
+  Message = mongoose.model<IMessage>('Message', MessageSchema);
+}
 
 export default Message;

@@ -28,6 +28,7 @@ interface IUserMethods {
 
 type UserModel = Model<IUser, object, IUserMethods>;
 
+// Define the schema outside of the model creation to make it reusable
 const UserSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
     firstName: {
@@ -101,7 +102,16 @@ UserSchema.method('comparePassword', async function (candidatePassword: string) 
   return bcrypt.compare(candidatePassword, this.password);
 });
 
-// Prevent mongoose from creating a new model if it already exists
-const User = mongoose.models.User || mongoose.model<IUser, UserModel>('User', UserSchema);
+// This is the key fix: Check if the model exists before trying to register it
+// This prevents the "Schema hasn't been registered for model 'User'" error
+let User: UserModel;
 
-export default User; 
+try {
+  // Try to get the existing model
+  User = mongoose.model<IUser, UserModel>('User');
+} catch {
+  // Model doesn't exist, so create it
+  User = mongoose.model<IUser, UserModel>('User', UserSchema);
+}
+
+export default User;

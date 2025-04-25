@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
-import Service from '@/models/Service';
+import { ensureModels } from '@/lib/ensureModels';
 import { extractUserFromToken } from '@/lib/jwt';
 
 // Get all services or filter by query params
@@ -35,6 +35,9 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    // Ensure all models are properly registered
+    const { Service, User } = ensureModels();
+    
     // Find services and populate provider details
     const services = await Service.find(query)
       .populate('provider', 'firstName lastName email profilePicture')
@@ -84,6 +87,9 @@ export async function POST(req: NextRequest) {
 
     // Connect to the database
     await connectDB();
+
+    // Ensure all models are properly registered
+    const { Service } = ensureModels();
 
     // Parse request body
     const body = await req.json();

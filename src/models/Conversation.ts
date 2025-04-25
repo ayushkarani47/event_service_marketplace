@@ -51,7 +51,15 @@ ConversationSchema.index({ serviceId: 1 });
 ConversationSchema.index({ bookingId: 1 });
 ConversationSchema.index({ lastMessageDate: -1 });
 
-// Prevent mongoose from creating a new model if it already exists
-const Conversation = mongoose.models.Conversation || mongoose.model<IConversation>('Conversation', ConversationSchema);
+// Fix for the "Schema hasn't been registered for model" error in Next.js
+let Conversation: Model<IConversation>;
+
+try {
+  // Try to get the existing model
+  Conversation = mongoose.model<IConversation>('Conversation');
+} catch {
+  // Model doesn't exist, so create it
+  Conversation = mongoose.model<IConversation>('Conversation', ConversationSchema);
+}
 
 export default Conversation;

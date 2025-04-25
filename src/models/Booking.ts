@@ -61,8 +61,15 @@ const BookingSchema: Schema = new Schema(
   }
 );
 
-// Use mongoose.models to check if the model exists already
-const Booking: Model<IBooking> = mongoose.models.Booking as Model<IBooking> || 
-  mongoose.model<IBooking>('Booking', BookingSchema);
+// Fix for the "Schema hasn't been registered for model" error in Next.js
+let Booking: Model<IBooking>;
 
-export default Booking; 
+try {
+  // Try to get the existing model
+  Booking = mongoose.model<IBooking>('Booking');
+} catch {
+  // Model doesn't exist, so create it
+  Booking = mongoose.model<IBooking>('Booking', BookingSchema);
+}
+
+export default Booking;

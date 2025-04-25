@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Booking from '@/models/Booking';
 import Service from '@/models/Service';
+import User from '@/models/User';
 import { extractUserFromToken } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {

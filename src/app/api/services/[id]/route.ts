@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
-import Service from '@/models/Service';
+import { ensureModels } from '@/lib/ensureModels';
 import { extractUserFromToken } from '@/lib/jwt';
 import mongoose from 'mongoose';
 
@@ -23,6 +23,9 @@ export async function GET(
     // Connect to the database
     await connectDB();
 
+    // Ensure all models are properly registered
+    const { Service, User } = ensureModels();
+    
     // Find service by ID and populate provider details
     const service = await Service.findById(id).populate(
       'provider',
@@ -85,6 +88,9 @@ export async function PUT(
 
     // Connect to the database
     await connectDB();
+    
+    // Ensure all models are properly registered
+    const { Service } = ensureModels();
 
     // Find the service
     const service = await Service.findById(id);
@@ -169,6 +175,9 @@ export async function DELETE(
 
     // Connect to the database
     await connectDB();
+    
+    // Ensure all models are properly registered
+    const { Service } = ensureModels();
 
     // Find the service
     const service = await Service.findById(id);

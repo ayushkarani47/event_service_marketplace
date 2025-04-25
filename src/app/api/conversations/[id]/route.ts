@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Conversation from '@/models/Conversation';
 import Message from '@/models/Message';
+import User from '@/models/User';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 

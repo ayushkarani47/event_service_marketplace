@@ -90,7 +90,15 @@ reviewSchema.post('save', async function() {
   }
 });
 
-// Prevent mongoose from creating a new model if it already exists
-const Review = mongoose.models.Review || mongoose.model<IReview>('Review', reviewSchema);
+// Fix for the "Schema hasn't been registered for model" error in Next.js
+let Review: Model<IReview>;
+
+try {
+  // Try to get the existing model
+  Review = mongoose.model<IReview>('Review');
+} catch {
+  // Model doesn't exist, so create it
+  Review = mongoose.model<IReview>('Review', reviewSchema);
+}
 
 export default Review;
