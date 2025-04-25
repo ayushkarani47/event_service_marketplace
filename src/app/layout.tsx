@@ -3,6 +3,7 @@ import { Inter, Roboto } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/layout/ClientLayout";
 import { AuthProvider } from "@/context/AuthContext";
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({ subsets: ["latin"] });
 const roboto = Roboto({
@@ -28,6 +29,7 @@ export default function RootLayout({
         <AuthProvider>
           <ClientLayout>{children}</ClientLayout>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
