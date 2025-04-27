@@ -86,7 +86,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, onLogout }) => {
                   flexGrow: { xs: 1, md: 0 }
                 }}
               >
-                EventHub
+                Utsav
               </Typography>
 
               {/* Desktop Navigation */}
