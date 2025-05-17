@@ -202,11 +202,11 @@ const ServiceDetailsPage = () => {
   const getPriceText = () => {
     switch (service.priceType) {
       case 'hourly':
-        return `$${service.price}/hr`;
+        return `₹${service.price}/hr`;
       case 'starting_at':
-        return `Starting at $${service.price}`;
+        return `Starting at ₹${service.price}`;
       default:
-        return `$${service.price}`;
+        return `₹${service.price}`;
     }
   };
 

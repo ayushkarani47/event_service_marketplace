@@ -8,7 +8,8 @@ const nextConfig = {
       'placekitten.com',
       'placeimg.com',
       'randomuser.me',
-      'media.istockphoto.com'
+      'media.istockphoto.com',
+      'framezhouse.com'
     ],
   },
   // Disable ESLint during build

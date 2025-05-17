@@ -18,14 +18,18 @@ import {
   Avatar, 
   Divider, 
   useScrollTrigger, 
-  Slide
+  Slide,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 
   Close as CloseIcon, 
   AccountCircle, 
-  Chat as ChatIcon
+  Chat as ChatIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
+import SearchBar from '../search/SearchBar';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -69,135 +73,166 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, onLogout }) => {
   return (
     <>
       <HideOnScroll>
-        <AppBar position="fixed" color="default" elevation={1} sx={{ backgroundColor: 'white' }}>
+        <AppBar 
+          position="fixed" 
+          color="default" 
+          elevation={1} 
+          sx={{ 
+            backgroundColor: 'white',
+            height: { xs: 'auto', md: '70px' } 
+          }}
+        >
           <Container maxWidth="lg">
-            <Toolbar disableGutters>
-              {/* Logo */}
-              <Typography
-                variant="h6"
-                component={Link}
-                href="/"
-                sx={{
-                  mr: 2,
-                  display: 'flex',
-                  fontWeight: 700,
-                  color: 'primary.main',
-                  textDecoration: 'none',
-                  flexGrow: { xs: 1, md: 0 }
-                }}
-              >
-                Utsav
-              </Typography>
-
-              {/* Desktop Navigation */}
-              <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, ml: 2 }}>
-                <Button component={Link} href="/" color="inherit" sx={{ mx: 1 }}>
-                  Home
-                </Button>
-                <Button component={Link} href="/services" color="inherit" sx={{ mx: 1 }}>
-                  Services
-                </Button>
-                {isLoggedIn && userRole === 'service_provider' && (
-                  <Button component={Link} href="/dashboard" color="inherit" sx={{ mx: 1 }}>
-                    Dashboard
-                  </Button>
-                )}
-                <Button component={Link} href="/about" color="inherit" sx={{ mx: 1 }}>
-                  About
-                </Button>
-                <Button component={Link} href="/contact" color="inherit" sx={{ mx: 1 }}>
-                  Contact
-                </Button>
-                {isLoggedIn && (
-                  <Button 
-                    component={Link} 
-                    href="/chats" 
-                    color="inherit" 
-                    sx={{ mx: 1 }}
-                    startIcon={<ChatIcon />}
-                  >
-                    Chats
-                  </Button>
-                )}
+            <Toolbar 
+              disableGutters 
+              sx={{ 
+                height: { xs: 'auto', md: '70px' },
+                py: { xs: 1, md: 1.5 } 
+              }}
+            >
+             
+              <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: { xs: 1, md: 0 } }}>
+                {/* Logo */}
+                <Typography
+                  variant="h6"
+                  component={Link}
+                  href="/"
+                  sx={{
+                    display: 'flex',
+                    fontWeight: 700,
+                    color: 'primary.main',
+                    textDecoration: 'none',
+                    mr: { xs: 1, md: 3 }
+                  }}
+                >
+                  Utsav
+                </Typography>
+                
+                {/* Search bar - visible on all devices */}
+                <Box 
+                  sx={{ 
+                    display: 'flex',
+                    width: { xs: '200px', sm: '200px', md: '300px' }
+                  }}  
+                >
+                  <SearchBar />
+                </Box>
               </Box>
+             
 
-              {/* User Authentication */}
-              <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-                {isLoggedIn ? (
-                  <>
-                    <IconButton
-                      onClick={handleMenu}
-                      size="large"
-                      edge="end"
-                      color="inherit"
-                      aria-label="account"
-                      aria-controls="menu-appbar"
-                      aria-haspopup="true"
-                    >
-                      <AccountCircle />
-                    </IconButton>
-                    <Menu
-                      id="menu-appbar"
-                      anchorEl={anchorEl}
-                      anchorOrigin={{
-                        vertical: 'bottom',
-                        horizontal: 'right',
-                      }}
-                      keepMounted
-                      transformOrigin={{
-                        vertical: 'top',
-                        horizontal: 'right',
-                      }}
-                      open={open}
-                      onClose={handleClose}
-                    >
-                      <MenuItem component={Link} href="/profile" onClick={handleClose}>
-                        Profile
-                      </MenuItem>
-                      <MenuItem component={Link} href="/bookings" onClick={handleClose}>
-                        My Bookings
-                      </MenuItem>
-                      {userRole === 'service_provider' && (
-                        <MenuItem component={Link} href="/services/manage" onClick={handleClose}>
-                          Manage Services
-                        </MenuItem>
-                      )}
-                      <Divider />
-                      <MenuItem onClick={handleLogout}>Logout</MenuItem>
-                    </Menu>
-                  </>
-                ) : (
-                  <Box sx={{ display: 'flex' }}>
-                    <Button component={Link} href="/login" color="inherit" sx={{ mr: 1 }}>
-                      Login
-                    </Button>
-                    <Button
-                      component={Link}
-                      href="/register"
-                      variant="contained"
-                      color="primary"
-                    >
-                      Register
-                    </Button>
-                  </Box>
-                )}
-              </Box>
+            
+{/* Desktop Navigation */}
+<Box sx={{ display: { xs: 'none', md: 'flex' }, ml: 2 }}>
+  <Button component={Link} href="/" color="inherit" sx={{ mx: 0.5 }}>
+    Home
+  </Button>
+  <Button component={Link} href="/services" color="inherit" sx={{ mx: 0.5 }}>
+    Services
+  </Button>
+  {isLoggedIn && userRole === 'service_provider' && (
+    <Button component={Link} href="/dashboard" color="inherit" sx={{ mx: 0.5 }}>
+      Dashboard
+    </Button>
+  )}
+  <Button component={Link} href="/about" color="inherit" sx={{ mx: 0.5 }}>
+    About
+  </Button>
+  <Button component={Link} href="/contact" color="inherit" sx={{ mx: 0.5 }}>
+    Contact
+  </Button>
+  {isLoggedIn && (
+    <Button 
+      component={Link} 
+      href="/chats" 
+      color="inherit" 
+      sx={{ mx: 0.5 }}
+      startIcon={<ChatIcon />}
+    >
+      Chats
+    </Button>
+  )}
+</Box>
 
-              {/* Mobile menu button */}
-              <IconButton
-                color="inherit"
-                aria-label="open drawer"
-                edge="end"
-                onClick={handleDrawerToggle}
-                sx={{ display: { md: 'none' } }}
-              >
-                {drawerOpen ? <CloseIcon /> : <MenuIcon />}
-              </IconButton>
+{/* Spacer to push auth to the right */}
+<Box sx={{ flexGrow: 1 }} />
+
+{/* User Authentication */}
+<Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+  {isLoggedIn ? (
+    <>
+      <IconButton
+        onClick={handleMenu}
+        size="large"
+        edge="end"
+        color="inherit"
+        aria-label="account"
+        aria-controls="menu-appbar"
+        aria-haspopup="true"
+      >
+        <AccountCircle />
+      </IconButton>
+      <Menu
+        id="menu-appbar"
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        keepMounted
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        open={open}
+        onClose={handleClose}
+      >
+        <MenuItem component={Link} href="/profile" onClick={handleClose}>
+          Profile
+        </MenuItem>
+        <MenuItem component={Link} href="/bookings" onClick={handleClose}>
+          My Bookings
+        </MenuItem>
+        {userRole === 'service_provider' && (
+          <MenuItem component={Link} href="/services/manage" onClick={handleClose}>
+            Manage Services
+          </MenuItem>
+        )}
+        <Divider />
+        <MenuItem onClick={handleLogout}>Logout</MenuItem>
+      </Menu>
+    </>
+  ) : (
+    <Box sx={{ display: 'flex' }}>
+      <Button component={Link} href="/login" color="inherit" sx={{ mr: 1 }}>
+        Login
+      </Button>
+      <Button
+        component={Link}
+        href="/register"
+        variant="contained"
+        color="primary"
+      >
+        Register
+      </Button>
+    </Box>
+  )}
+</Box>
+
+{/* Mobile menu button */}
+<IconButton
+  color="inherit"
+  aria-label="open drawer"
+  edge="end"
+  onClick={handleDrawerToggle}
+  sx={{ display: { md: 'none' } }}
+>
+  {drawerOpen ? <CloseIcon /> : <MenuIcon />}
+</IconButton>
             </Toolbar>
           </Container>
         </AppBar>
       </HideOnScroll>
-      <Toolbar /> {/* Empty toolbar to push content below the fixed AppBar */}
+      <Toolbar sx={{ height: { xs: 'auto', md: '70px' } }} /> {/* Empty toolbar to push content below the fixed AppBar */}
 
       {/* Mobile drawer */}
       <Drawer
@@ -215,6 +250,8 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, onLogout }) => {
               <CloseIcon />
             </IconButton>
           </Box>
+          {/* Mobile Search removed as it's now always visible in the header */}
+          
           <List>
             <ListItemButton component={Link} href="/" onClick={handleDrawerToggle}>
               <ListItemText primary="Home" />

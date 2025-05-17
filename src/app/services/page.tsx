@@ -174,7 +174,7 @@ function ServicesContent() {
             </div>
             <div>
               <label htmlFor="minPrice" className="block text-sm font-medium text-gray-700 mb-1">
-                Min Price ($)
+                Min Price (₹)
               </label>
               <input
                 type="number"
@@ -187,7 +187,7 @@ function ServicesContent() {
             </div>
             <div>
               <label htmlFor="maxPrice" className="block text-sm font-medium text-gray-700 mb-1">
-                Max Price ($)
+                Max Price (₹)
               </label>
               <input
                 type="number"
@@ -267,7 +267,7 @@ function ServicesContent() {
                   <div className="flex justify-between items-center">
                     <span className="text-white font-medium">{service.category}</span>
                     <div className="bg-white text-xs font-semibold px-2 py-1 rounded-full text-blue-600">
-                      ${service.price}
+                      ₹{service.price}
                     </div>
                   </div>
                 </div>

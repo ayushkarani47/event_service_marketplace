@@ -33,11 +33,11 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   const getPriceText = () => {
     switch (priceType) {
       case 'hourly':
-        return `$${price}/hr`;
+        return `₹${price}/hr`;
       case 'starting_at':
-        return `Starting at $${price}`;
+        return `Starting at ₹${price}`;
       default:
-        return `$${price}`;
+        return `₹${price}`;
     }
   };
 
