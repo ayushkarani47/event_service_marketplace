@@ -246,8 +246,8 @@ function ServicesContent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map((service) => (
             <Link 
-              key={service._id?.toString()} 
-              href={`/services/${service._id}`}
+              key={service.id} 
+              href={`/services/${service.id}`}
               className="block bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow"
             >
               <div className="relative h-48 bg-gray-200">

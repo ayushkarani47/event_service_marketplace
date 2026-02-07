@@ -5,10 +5,10 @@ import { updateReview, deleteReview, addReviewReply, getReviewById } from '@/lib
 // GET /api/reviews/:id - Get a specific review
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reviewId = params.id;
+    const { id: reviewId } = await params;
     
     // Get review
     const review = await getReviewById(reviewId);
@@ -35,10 +35,10 @@ export async function GET(
 // PUT /api/reviews/:id - Update a review
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reviewId = params.id;
+    const { id: reviewId } = await params;
     
     // Get token from request
     const token = request.headers.get('authorization')?.split(' ')[1];
@@ -86,10 +86,10 @@ export async function PUT(
 // DELETE /api/reviews/:id - Delete a review
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reviewId = params.id;
+    const { id: reviewId } = await params;
     
     // Get token from request
     const token = request.headers.get('authorization')?.split(' ')[1];

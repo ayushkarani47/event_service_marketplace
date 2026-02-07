@@ -19,7 +19,7 @@ const categories = [
 export default function EditServicePage() {
   const { id } = useParams();
   const router = useRouter();
-  const { user, isAuthenticated, authToken } = useAuth();
+  const { user, isAuthenticated, token } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -31,7 +31,7 @@ export default function EditServicePage() {
     description: '',
     category: '',
     price: '',
-    priceType: 'fixed',
+    price_type: 'fixed',
     location: '',
     images: [''],
     features: [''],
@@ -45,7 +45,7 @@ export default function EditServicePage() {
       return;
     }
     
-    if (user && user.role !== 'provider' && user.role !== 'admin') {
+    if (user && user.role !== 'service_provider' && user.role !== 'admin') {
       router.push('/');
       return;
     }
@@ -54,17 +54,21 @@ export default function EditServicePage() {
     const fetchService = async () => {
       try {
         setLoading(true);
-        const service = await getServiceById(id.toString());
+        const serviceId = id as string;
+        if (!serviceId) {
+          throw new Error('Service ID is missing');
+        }
+        const service = await getServiceById(serviceId);
         
         // Check if the user is the owner or an admin
-        if (user && (user._id === service.provider._id || user.role === 'admin')) {
+        if (user && (user.id === service.provider_id || user.role === 'admin')) {
           // Format the data for the form
           setFormData({
             title: service.title || '',
             description: service.description || '',
             category: service.category || '',
             price: service.price?.toString() || '',
-            priceType: service.priceType || 'fixed',
+            price_type: service.price_type || 'fixed',
             location: service.location || '',
             images: service.images?.length ? service.images : [''],
             features: service.features?.length ? service.features : [''],
@@ -170,11 +174,11 @@ export default function EditServicePage() {
         features: formData.features.filter(feature => feature.trim() !== '')
       };
       
-      if (!authToken) {
+      if (!token) {
         throw new Error('Authentication token is missing');
       }
       
-      await updateService(id.toString(), processedData, authToken);
+      await updateService((id as string).toString(), processedData, token);
       
       setSuccessMessage('Service updated successfully!');
       
@@ -300,7 +304,7 @@ export default function EditServicePage() {
             
             <div>
               <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                Price ($) <span className="text-red-500">*</span>
+                Price (₹) <span className="text-red-500">*</span>
               </label>
               <div className="flex">
                 <input
@@ -310,13 +314,13 @@ export default function EditServicePage() {
                   value={formData.price}
                   onChange={handlePriceChange}
                   className="w-1/2 border border-gray-300 rounded-l-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="e.g., 100"
+                  placeholder="e.g., 5000"
                   required
                 />
                 <select
-                  id="priceType"
-                  name="priceType"
-                  value={formData.priceType}
+                  id="price_type"
+                  name="price_type"
+                  value={formData.price_type}
                   onChange={handleInputChange}
                   className="w-1/2 border border-gray-300 rounded-r-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-l-0"
                   aria-label="Price type"

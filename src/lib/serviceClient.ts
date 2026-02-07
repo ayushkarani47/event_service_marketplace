@@ -8,12 +8,13 @@ export interface ServiceFormData {
   description: string;
   category: string;
   price: number;
+  price_type?: string; // 'fixed', 'hourly', 'starting_at'
   images: string[];
   location: string;
-  availability: {
+  availability?: {
     startDate: Date | string;
     endDate: Date | string;
-  };
+  } | string;
   features: string[];
 }
 

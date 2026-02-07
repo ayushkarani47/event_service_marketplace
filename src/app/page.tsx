@@ -443,12 +443,18 @@ export default function HomePage() {
                   Find and book top-rated professionals for your next event today.
                 </p>
               </div>
-              <div>
+              <div className="flex gap-4">
                 <Link 
-                  href="/services" 
+                  href="/register-phone" 
                   className="inline-block px-8 py-4 bg-blue-600 text-white rounded-md font-semibold text-lg hover:bg-blue-700 transition-colors shadow-lg"
                 >
-                  Get Started
+                  Sign Up
+                </Link>
+                <Link 
+                  href="/services" 
+                  className="inline-block px-8 py-4 bg-gray-700 text-white rounded-md font-semibold text-lg hover:bg-gray-600 transition-colors shadow-lg"
+                >
+                  Browse Services
                 </Link>
               </div>
             </div>
@@ -466,7 +472,7 @@ export default function HomePage() {
                 Join our marketplace to reach more clients and grow your business
               </p>
               <Link
-                href="/register?role=provider"
+                href="/register-phone"
                 className="inline-block px-8 py-3 bg-white text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600"
               >
                 Join as a Provider

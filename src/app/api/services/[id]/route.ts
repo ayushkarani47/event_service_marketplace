@@ -1,38 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import { ensureModels } from '@/lib/ensureModels';
+import { getSupabaseServer, getSupabaseAdmin } from '@/lib/supabaseServer';
 import { extractUserFromToken } from '@/lib/jwt';
-import mongoose from 'mongoose';
 
 // Get a single service by ID
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
-    // Validate ID format
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { message: 'Invalid service ID format' },
-        { status: 400 }
-      );
-    }
-
-    // Connect to the database
-    await connectDB();
-
-    // Ensure all models are properly registered
-    const { Service, User } = ensureModels();
+    const supabase = await getSupabaseServer();
     
-    // Find service by ID and populate provider details
-    const service = await Service.findById(id).populate(
-      'provider',
-      'firstName lastName email profilePicture bio'
-    );
+    // Fetch service from Supabase
+    const { data: service, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!service) {
+    if (error || !service) {
       return NextResponse.json(
         { message: 'Service not found' },
         { status: 404 }
@@ -52,18 +39,10 @@ export async function GET(
 // Update a service
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
-
-    // Validate ID format
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { message: 'Invalid service ID format' },
-        { status: 400 }
-      );
-    }
+    const { id } = await params;
 
     // Get authorization header
     const authHeader = req.headers.get('Authorization');
@@ -86,16 +65,16 @@ export async function PUT(
       );
     }
 
-    // Connect to the database
-    await connectDB();
-    
-    // Ensure all models are properly registered
-    const { Service } = ensureModels();
+    const supabaseAdmin = getSupabaseAdmin();
 
-    // Find the service
-    const service = await Service.findById(id);
+    // Fetch the service to check ownership
+    const { data: service, error: fetchError } = await supabaseAdmin
+      .from('services')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!service) {
+    if (fetchError || !service) {
       return NextResponse.json(
         { message: 'Service not found' },
         { status: 404 }
@@ -104,7 +83,7 @@ export async function PUT(
 
     // Check if the user is the owner of the service or an admin
     if (
-      service.provider.toString() !== decodedToken.sub && 
+      service.provider_id !== decodedToken.sub && 
       decodedToken.role !== 'admin'
     ) {
       return NextResponse.json(
@@ -117,11 +96,14 @@ export async function PUT(
     const body = await req.json();
     
     // Update the service
-    const updatedService = await Service.findByIdAndUpdate(
-      id,
-      { ...body },
-      { new: true, runValidators: true }
-    );
+    const { data: updatedService, error: updateError } = await supabaseAdmin
+      .from('services')
+      .update(body)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (updateError) throw updateError;
 
     return NextResponse.json(
       { message: 'Service updated successfully', service: updatedService },
@@ -139,18 +121,10 @@ export async function PUT(
 // Delete a service
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
-
-    // Validate ID format
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { message: 'Invalid service ID format' },
-        { status: 400 }
-      );
-    }
+    const { id } = await params;
 
     // Get authorization header
     const authHeader = req.headers.get('Authorization');
@@ -173,16 +147,16 @@ export async function DELETE(
       );
     }
 
-    // Connect to the database
-    await connectDB();
-    
-    // Ensure all models are properly registered
-    const { Service } = ensureModels();
+    const supabaseAdmin = getSupabaseAdmin();
 
-    // Find the service
-    const service = await Service.findById(id);
+    // Fetch the service to check ownership
+    const { data: service, error: fetchError } = await supabaseAdmin
+      .from('services')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!service) {
+    if (fetchError || !service) {
       return NextResponse.json(
         { message: 'Service not found' },
         { status: 404 }
@@ -191,7 +165,7 @@ export async function DELETE(
 
     // Check if the user is the owner of the service or an admin
     if (
-      service.provider.toString() !== decodedToken.sub && 
+      service.provider_id !== decodedToken.sub && 
       decodedToken.role !== 'admin'
     ) {
       return NextResponse.json(
@@ -201,7 +175,12 @@ export async function DELETE(
     }
 
     // Delete the service
-    await Service.findByIdAndDelete(id);
+    const { error: deleteError } = await supabaseAdmin
+      .from('services')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
 
     return NextResponse.json(
       { message: 'Service deleted successfully' },

@@ -1,57 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import Conversation from '@/models/Conversation';
-import User from '@/models/User';
-import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
+import { extractUserFromToken } from '@/lib/jwt';
 
 // Helper function to get the current user from the token
 function getCurrentUser(request: NextRequest) {
   try {
-    // Get token from cookies
-    const token = request.cookies.get('token')?.value;
-    
-    if (!token) {
-      // Try to get token from Authorization header as fallback
-      const authHeader = request.headers.get('Authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const headerToken = authHeader.substring(7);
-        try {
-          const decoded = jwt.verify(headerToken, process.env.JWT_SECRET || 'your_jwt_secret') as { _id: string };
-          console.log('User authenticated via Authorization header');
-          return decoded;
-        } catch (err) {
-          console.error('Invalid token in Authorization header:', err);
-        }
-      }
-      
-      console.log('No token found in cookies or Authorization header');
+    // Get token from Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No Authorization header found');
       return null;
     }
     
-    // Verify the token from cookies
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret') as { _id: string };
-      console.log('User authenticated via cookie token');
-      return decoded;
-    } catch (jwtError) {
-      console.error('JWT verification error:', jwtError);
-      
-      // If the token is expired or invalid, try to get it from localStorage via headers
-      const authHeader = request.headers.get('Authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const headerToken = authHeader.substring(7);
-        try {
-          const decoded = jwt.verify(headerToken, process.env.JWT_SECRET || 'your_jwt_secret') as { _id: string };
-          console.log('User authenticated via Authorization header (fallback)');
-          return decoded;
-        } catch (err) {
-          console.error('Invalid token in Authorization header (fallback):', err);
-        }
-      }
-      
+    const token = authHeader.substring(7);
+    const decoded = extractUserFromToken(token);
+    
+    if (!decoded || !decoded.sub) {
+      console.error('Invalid token');
       return null;
     }
+    
+    console.log('User authenticated via Authorization header');
+    return decoded;
   } catch (error) {
     console.error('Error getting current user:', error);
     return null;
@@ -61,8 +31,6 @@ function getCurrentUser(request: NextRequest) {
 // GET /api/conversations - Get all conversations for the current user
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-
     // Get the current user from the token
     const user = getCurrentUser(request);
     if (!user) {
@@ -73,7 +41,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!user._id) {
+    if (!user.sub) {
       console.log('Invalid user ID in token');
       return NextResponse.json(
         { message: 'Invalid user information' },
@@ -81,33 +49,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userId = user._id;
+    const userId = user.sub;
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const serviceId = searchParams.get('serviceId');
     const bookingId = searchParams.get('bookingId');
 
-    // Build query
-    const query: any = {
-      participants: new mongoose.Types.ObjectId(userId),
-    };
+    // Build query - get conversations where user is a participant
+    let query = supabaseAdmin
+      .from('conversations')
+      .select('*, participants:conversation_participants(user_id), service:service_id(id, title, images)')
+      .contains('participant_ids', [userId]);
 
     if (serviceId) {
-      query.serviceId = new mongoose.Types.ObjectId(serviceId);
+      query = query.eq('service_id', serviceId);
     }
 
     if (bookingId) {
-      query.bookingId = new mongoose.Types.ObjectId(bookingId);
+      query = query.eq('booking_id', bookingId);
     }
 
-    // Get conversations
-    const conversations = await Conversation.find(query)
-      .populate('participants', 'firstName lastName profilePicture')
-      .populate('serviceId', 'title images')
-      .sort({ lastMessageDate: -1 });
+    const { data: conversations, error } = await query.order('updated_at', { ascending: false });
 
-    return NextResponse.json({ success: true, data: conversations });
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data: conversations || [] });
   } catch (error: any) {
     console.error('Error fetching conversations:', error);
     return NextResponse.json(
@@ -123,8 +91,6 @@ export async function GET(request: NextRequest) {
 // POST /api/conversations - Create a new conversation
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-
     // Get the current user from the token
     const user = getCurrentUser(request);
     if (!user) {
@@ -135,7 +101,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!user._id) {
+    if (!user.sub) {
       console.log('Invalid user ID in token');
       return NextResponse.json(
         { message: 'Invalid user information' },
@@ -143,8 +109,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = user._id;
+    const userId = user.sub;
     const body = await request.json();
+    const supabaseAdmin = getSupabaseAdmin();
     
     console.log('Conversation request body:', JSON.stringify(body));
     
@@ -157,47 +124,48 @@ export async function POST(request: NextRequest) {
     }
 
     // Make sure the current user is included in participants
-    if (!body.participants.includes(userId)) {
-      body.participants.push(userId);
-    }
+    const participants = [...new Set([...body.participants, userId])]; // Remove duplicates
 
-    console.log('Looking for existing conversation with participants:', body.participants);
+    console.log('Looking for existing conversation with participants:', participants);
 
     // Check if conversation already exists between these participants
-    const existingConversation = await Conversation.findOne({
-      participants: { $all: body.participants, $size: body.participants.length },
-      ...(body.serviceId ? { serviceId: body.serviceId } : {}),
-      ...(body.bookingId ? { bookingId: body.bookingId } : {})
-    });
+    const { data: existingConversations } = await supabaseAdmin
+      .from('conversations')
+      .select('*')
+      .contains('participant_ids', participants)
+      .eq('service_id', body.serviceId || null)
+      .eq('booking_id', body.bookingId || null);
 
-    if (existingConversation) {
-      console.log('Found existing conversation:', existingConversation._id);
+    if (existingConversations && existingConversations.length > 0) {
+      console.log('Found existing conversation:', existingConversations[0].id);
       return NextResponse.json({ 
         success: true, 
-        data: existingConversation,
+        data: existingConversations[0],
         message: 'Conversation already exists'
       });
     }
 
     console.log('Creating new conversation');
     // Create new conversation
-    const conversation = await Conversation.create({
-      participants: body.participants,
-      serviceId: body.serviceId || null,
-      bookingId: body.bookingId || null,
-      unreadCount: {}
-    });
+    const { data: conversation, error: createError } = await supabaseAdmin
+      .from('conversations')
+      .insert({
+        participant_ids: participants,
+        service_id: body.serviceId || null,
+        booking_id: body.bookingId || null,
+        last_message: null,
+        last_message_date: null
+      })
+      .select('*, service:service_id(id, title, images)')
+      .single();
 
-    console.log('New conversation created:', conversation._id);
+    if (createError) throw createError;
 
-    // Populate the conversation
-    const populatedConversation = await Conversation.findById(conversation._id)
-      .populate('participants', 'firstName lastName profilePicture')
-      .populate('serviceId', 'title images');
+    console.log('New conversation created:', conversation.id);
 
     return NextResponse.json({ 
       success: true, 
-      data: populatedConversation 
+      data: conversation 
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating conversation:', error);

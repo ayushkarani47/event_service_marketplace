@@ -32,7 +32,8 @@ export default function ManageServicesPage() {
     try {
       setLoading(true);
       setError(null);
-      const fetchedServices = await getServicesByProvider(user._id, token);
+      const userId = user.id;
+      const fetchedServices = await getServicesByProvider(userId, token);
       setServices(fetchedServices);
     } catch (err: any) {
       console.error('Error fetching services:', err);
@@ -52,7 +53,7 @@ export default function ManageServicesPage() {
     try {
       setDeleteLoading(serviceId);
       await deleteService(serviceId, token);
-      setServices(prev => prev.filter(service => service._id !== serviceId));
+      setServices(prev => prev.filter(service => service.id !== serviceId));
     } catch (err: any) {
       console.error('Error deleting service:', err);
       alert(err.message || 'Failed to delete service. Please try again.');
@@ -113,7 +114,7 @@ export default function ManageServicesPage() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {services.map(service => (
             <div 
-              key={service._id} 
+              key={service.id} 
               className="bg-white overflow-hidden shadow rounded-lg"
             >
               <div className="relative h-48 bg-gray-200">
@@ -139,23 +140,23 @@ export default function ManageServicesPage() {
                 </div>
                 <div className="flex space-x-2">
                   <Link 
-                    href={`/services/${service._id}`}
+                    href={`/services/${service.id}`}
                     className="flex-1 text-center px-3 py-2 bg-gray-100 text-gray-800 text-sm rounded hover:bg-gray-200"
                   >
                     View
                   </Link>
                   <Link 
-                    href={`/dashboard/services/edit/${service._id}`}
+                    href={`/dashboard/services/edit/${service.id}`}
                     className="flex-1 text-center px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded hover:bg-blue-200"
                   >
                     Edit
                   </Link>
                   <button
-                    onClick={() => handleDeleteService(service._id)}
-                    disabled={deleteLoading === service._id}
+                    onClick={() => handleDeleteService(service.id)}
+                    disabled={deleteLoading === service.id}
                     className="flex-1 px-3 py-2 bg-red-100 text-red-800 text-sm rounded hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {deleteLoading === service._id ? 'Deleting...' : 'Delete'}
+                    {deleteLoading === service.id ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>

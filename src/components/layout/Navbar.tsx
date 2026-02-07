@@ -203,12 +203,12 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, onLogout }) => {
     </>
   ) : (
     <Box sx={{ display: 'flex' }}>
-      <Button component={Link} href="/login" color="inherit" sx={{ mr: 1 }}>
+      <Button component={Link} href="/login-phone" color="inherit" sx={{ mr: 1 }}>
         Login
       </Button>
       <Button
         component={Link}
-        href="/register"
+        href="/register-phone"
         variant="contained"
         color="primary"
       >
@@ -305,7 +305,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, onLogout }) => {
             <Box sx={{ mt: 'auto', p: 2 }}>
               <Button
                 component={Link}
-                href="/login"
+                href="/login-phone"
                 fullWidth
                 variant="outlined"
                 color="primary"
@@ -316,7 +316,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, onLogout }) => {
               </Button>
               <Button
                 component={Link}
-                href="/register"
+                href="/register-phone"
                 fullWidth
                 variant="contained"
                 color="primary"

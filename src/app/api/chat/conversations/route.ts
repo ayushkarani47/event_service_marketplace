@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import Conversation from '@/models/Conversation';
-import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
 
 // Direct chat API that bypasses middleware authentication
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-    
     // Get the user ID directly from the request body
     const body = await request.json();
+    const supabaseAdmin = getSupabaseAdmin();
     
     console.log('Chat conversation request body:', JSON.stringify(body));
     
@@ -32,47 +28,48 @@ export async function POST(request: NextRequest) {
     const userId = body.userId;
     
     // Make sure the current user is included in participants
-    if (!body.participants.includes(userId)) {
-      body.participants.push(userId);
-    }
+    const participants = [...new Set([...body.participants, userId])]; // Remove duplicates
 
-    console.log('Looking for existing conversation with participants:', body.participants);
+    console.log('Looking for existing conversation with participants:', participants);
 
     // Check if conversation already exists between these participants
-    const existingConversation = await Conversation.findOne({
-      participants: { $all: body.participants, $size: body.participants.length },
-      ...(body.serviceId ? { serviceId: body.serviceId } : {}),
-      ...(body.bookingId ? { bookingId: body.bookingId } : {})
-    });
+    const { data: existingConversations } = await supabaseAdmin
+      .from('conversations')
+      .select('*')
+      .contains('participant_ids', participants)
+      .eq('service_id', body.serviceId || null)
+      .eq('booking_id', body.bookingId || null);
 
-    if (existingConversation) {
-      console.log('Found existing conversation:', existingConversation._id);
+    if (existingConversations && existingConversations.length > 0) {
+      console.log('Found existing conversation:', existingConversations[0].id);
       return NextResponse.json({ 
         success: true, 
-        data: existingConversation,
+        data: existingConversations[0],
         message: 'Conversation already exists'
       });
     }
 
     console.log('Creating new conversation');
     // Create new conversation
-    const conversation = await Conversation.create({
-      participants: body.participants,
-      serviceId: body.serviceId || null,
-      bookingId: body.bookingId || null,
-      unreadCount: {}
-    });
+    const { data: conversation, error: createError } = await supabaseAdmin
+      .from('conversations')
+      .insert({
+        participant_ids: participants,
+        service_id: body.serviceId || null,
+        booking_id: body.bookingId || null,
+        last_message: null,
+        last_message_date: null
+      })
+      .select('*, service:service_id(id, title, images)')
+      .single();
 
-    console.log('New conversation created:', conversation._id);
+    if (createError) throw createError;
 
-    // Populate the conversation
-    const populatedConversation = await Conversation.findById(conversation._id)
-      .populate('participants', 'firstName lastName profilePicture')
-      .populate('serviceId', 'title images');
+    console.log('New conversation created:', conversation.id);
 
     return NextResponse.json({ 
       success: true, 
-      data: populatedConversation 
+      data: conversation 
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating conversation:', error);
@@ -88,7 +85,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Get the user ID from the query parameter
     const { searchParams } = new URL(request.url);
@@ -103,26 +100,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Build query
-    const query: any = {
-      participants: userId,
-    };
+    // Build query - get conversations where user is a participant
+    let query = supabaseAdmin
+      .from('conversations')
+      .select('*, service:service_id(id, title, images)')
+      .contains('participant_ids', [userId]);
 
     if (serviceId) {
-      query.serviceId = serviceId;
+      query = query.eq('service_id', serviceId);
     }
 
     if (bookingId) {
-      query.bookingId = bookingId;
+      query = query.eq('booking_id', bookingId);
     }
 
     // Get conversations
-    const conversations = await Conversation.find(query)
-      .populate('participants', 'firstName lastName profilePicture')
-      .populate('serviceId', 'title images')
-      .sort({ lastMessageDate: -1 });
+    const { data: conversations, error } = await query.order('updated_at', { ascending: false });
 
-    return NextResponse.json({ success: true, data: conversations });
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data: conversations || [] });
   } catch (error: any) {
     console.error('Error fetching conversations:', error);
     return NextResponse.json(

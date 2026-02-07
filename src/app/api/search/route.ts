@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Service from '../../../models/Service';
-import User from '../../../models/User';
-import dbConnect from '../../../lib/dbConnect';
-//import { ensureModels } from '../../../lib/ensureModels';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,33 +10,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ suggestions: [] });
     }
 
-    await dbConnect();
-    
+    const supabaseAdmin = getSupabaseAdmin();
 
-    
-    const services = await Service.find({
-      
-      $or: [
-        { title: { $regex: query, $options: 'i' } },
-        { description: { $regex: query, $options: 'i' } },
-        { category: { $regex: query, $options: 'i' } },
-        { location: { $regex: query, $options: 'i' } },
-        { features: { $elemMatch: { $regex: query, $options: 'i' } } }
-      ]
-    })
-    .select('title category location')
-    .limit(5);
+    // Search services using Supabase full-text search or ILIKE
+    const { data: services, error } = await supabaseAdmin
+      .from('services')
+      .select('id, title, category, location')
+      .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%,location.ilike.%${query}%`)
+      .limit(5);
+
+    if (error) throw error;
 
     // Format the suggestions
-    const suggestions = services.map(service => ({
-      id: service._id,
+    const suggestions = (services || []).map(service => ({
+      id: service.id,
       text: service.title,
       type: 'service',
       category: service.category,
       location: service.location
     }));
-
-  
 
     return NextResponse.json({ suggestions: suggestions });
   } catch (error) {

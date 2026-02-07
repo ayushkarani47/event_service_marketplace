@@ -1,24 +1,22 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { IUser } from '@/models/User';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('Please define the JWT_SECRET environment variable');
 }
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_SECRET = process.env.JWT_SECRET as string;
+const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || '7d';
 
 // Generate JWT token
 export const generateToken = (user: IUser) => {
   const payload = {
     sub: user._id,
     email: user.email,
-    role: user.role,
-    firstName: user.firstName,
-    lastName: user.lastName,
   };
 
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  const signOptions: SignOptions = { expiresIn: JWT_EXPIRES_IN } as any;
+  return jwt.sign(payload, JWT_SECRET, signOptions);
 };
 
 // Verify JWT token
@@ -45,6 +43,7 @@ export const extractUserFromToken = (token: string): JwtPayload | null => {
   try {
     return jwt.verify(token, JWT_SECRET) as JwtPayload;
   } catch (error) {
+    console.error('JWT verification error:', error instanceof Error ? error.message : 'Unknown error');
     return null;
   }
-}; 
+};

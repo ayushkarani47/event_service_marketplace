@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import Conversation from '@/models/Conversation';
-import Message from '@/models/Message';
-import mongoose from 'mongoose';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
 
 // GET /api/chat/conversations/:id - Get a specific conversation and its messages
 export async function GET(
@@ -10,7 +7,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await connectDB();
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Get the user ID from the query parameter
     const { searchParams } = new URL(request.url);
@@ -28,11 +25,13 @@ export async function GET(
     console.log(`Fetching conversation: ${conversationId} for user: ${userId}`);
 
     // Get the conversation
-    const conversation = await Conversation.findById(conversationId)
-      .populate('participants', 'firstName lastName profilePicture')
-      .populate('serviceId', 'title images');
+    const { data: conversation, error: convError } = await supabaseAdmin
+      .from('conversations')
+      .select('*, service:service_id(id, title, images)')
+      .eq('id', conversationId)
+      .single();
 
-    if (!conversation) {
+    if (convError || !conversation) {
       console.log(`Conversation not found: ${conversationId}`);
       return NextResponse.json(
         { message: 'Conversation not found' },
@@ -41,9 +40,7 @@ export async function GET(
     }
 
     // Check if user is a participant
-    const isParticipant = conversation.participants.some((p: any) => 
-      p._id?.toString() === userId || p.toString() === userId
-    );
+    const isParticipant = conversation.participant_ids && conversation.participant_ids.includes(userId);
     
     if (!isParticipant) {
       console.log(`User ${userId} is not authorized to view conversation ${conversationId}`);
@@ -56,33 +53,27 @@ export async function GET(
     console.log(`Fetching messages for conversation: ${conversationId}`);
 
     // Get messages for this conversation
-    const messages = await Message.find({
-      $or: [
-        { sender: userId, receiver: { $in: conversation.participants.map((p: any) => p._id || p) } },
-        { receiver: userId, sender: { $in: conversation.participants.map((p: any) => p._id || p) } }
-      ],
-      ...(conversation.serviceId ? { serviceId: conversation.serviceId } : {}),
-      ...(conversation.bookingId ? { bookingId: conversation.bookingId } : {})
-    })
-    .sort({ createdAt: 1 })
-    .populate('sender', 'firstName lastName profilePicture');
+    const { data: messages, error: msgError } = await supabaseAdmin
+      .from('messages')
+      .select('*, sender:sender_id(id, first_name, last_name, profile_picture)')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
 
-    console.log(`Found ${messages.length} messages for conversation: ${conversationId}`);
+    if (msgError) throw msgError;
 
-    // Mark messages as read
-    await Message.updateMany(
-      { receiver: userId, read: false },
-      { read: true }
-    );
+    console.log(`Found ${messages?.length || 0} messages for conversation: ${conversationId}`);
 
-    // Reset unread count for this user
-    const unreadCountUpdate: any = {};
-    unreadCountUpdate[`unreadCount.${userId}`] = 0;
-    await Conversation.findByIdAndUpdate(conversationId, { $set: unreadCountUpdate });
+    // Mark messages as read for this user
+    await supabaseAdmin
+      .from('messages')
+      .update({ read: true })
+      .eq('conversation_id', conversationId)
+      .eq('receiver_id', userId)
+      .eq('read', false);
 
     return NextResponse.json({ 
       success: true, 
-      data: { conversation, messages } 
+      data: { conversation, messages: messages || [] } 
     });
   } catch (error: any) {
     console.error('Error fetching conversation:', error);
@@ -102,7 +93,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await connectDB();
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Get the user ID from the query parameter
     const { searchParams } = new URL(request.url);
@@ -120,9 +111,13 @@ export async function DELETE(
     console.log(`Deleting conversation: ${conversationId} for user: ${userId}`);
 
     // Get the conversation
-    const conversation = await Conversation.findById(conversationId);
+    const { data: conversation, error: convError } = await supabaseAdmin
+      .from('conversations')
+      .select('*')
+      .eq('id', conversationId)
+      .single();
 
-    if (!conversation) {
+    if (convError || !conversation) {
       console.log(`Conversation not found: ${conversationId}`);
       return NextResponse.json(
         { message: 'Conversation not found' },
@@ -131,9 +126,7 @@ export async function DELETE(
     }
 
     // Check if user is a participant
-    const isParticipant = conversation.participants.some((p: any) => 
-      p.toString() === userId
-    );
+    const isParticipant = conversation.participant_ids && conversation.participant_ids.includes(userId);
     
     if (!isParticipant) {
       console.log(`User ${userId} is not authorized to delete conversation ${conversationId}`);
@@ -146,17 +139,21 @@ export async function DELETE(
     console.log(`Deleting messages for conversation: ${conversationId}`);
 
     // Delete all messages in the conversation
-    await Message.deleteMany({
-      $or: [
-        { sender: userId, receiver: { $in: conversation.participants } },
-        { receiver: userId, sender: { $in: conversation.participants } }
-      ],
-      ...(conversation.serviceId ? { serviceId: conversation.serviceId } : {}),
-      ...(conversation.bookingId ? { bookingId: conversation.bookingId } : {})
-    });
+    const { error: deleteMessagesError } = await supabaseAdmin
+      .from('messages')
+      .delete()
+      .eq('conversation_id', conversationId);
+
+    if (deleteMessagesError) throw deleteMessagesError;
 
     // Delete the conversation
-    await Conversation.findByIdAndDelete(conversationId);
+    const { error: deleteConvError } = await supabaseAdmin
+      .from('conversations')
+      .delete()
+      .eq('id', conversationId);
+
+    if (deleteConvError) throw deleteConvError;
+
     console.log(`Conversation ${conversationId} deleted successfully`);
 
     return NextResponse.json({ 

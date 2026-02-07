@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import Booking from '@/models/Booking';
-import Service from '@/models/Service';
-import User from '@/models/User';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
 import { extractUserFromToken } from '@/lib/jwt';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
 
     // Check for authorization token
     const authHeader = request.headers.get('authorization');
@@ -23,7 +20,7 @@ export async function GET(
 
     // Extract token and user
     const token = authHeader.split(' ')[1];
-    const userData = await extractUserFromToken(token);
+    const userData = extractUserFromToken(token);
     
     if (!userData || !userData.sub) {
       return NextResponse.json(
@@ -32,15 +29,17 @@ export async function GET(
       );
     }
 
-    // Connect to database
-    await connectDB();
+    // Get Supabase client
+    const supabaseAdmin = getSupabaseAdmin();
 
-    // Fetch the booking
-    const booking = await Booking.findById(id)
-      .populate('service', 'title price priceType images provider')
-      .populate('customer', 'firstName lastName email');
+    // Fetch the booking with related data
+    const { data: booking, error: bookingError } = await supabaseAdmin
+      .from('bookings')
+      .select('*, service:service_id(id, title, price, price_type, images, provider_id), customer:customer_id(id, first_name, last_name, email), provider:provider_id(id, first_name, last_name, email)')
+      .eq('id', id)
+      .single();
 
-    if (!booking) {
+    if (bookingError || !booking) {
       return NextResponse.json(
         { message: 'Booking not found' },
         { status: 404 }
@@ -48,25 +47,8 @@ export async function GET(
     }
 
     // Check if the user has permission to view this booking
-    // Handle populated documents by safely accessing IDs with proper type handling
-    let customerId = '';
-    if (booking.customer) {
-      // Handle both populated and non-populated cases
-      customerId = 'firstName' in booking.customer 
-        ? (booking.customer as unknown as { _id: { toString(): string } })._id.toString()
-        : booking.customer.toString();
-    }
-    
-    let providerId = '';
-    if (booking.service) {
-      // Handle both populated and non-populated cases for service
-      const service = booking.service as unknown as { provider?: { toString(): string } | { _id: { toString(): string } } };
-      if (service.provider) {
-        providerId = 'toString' in service.provider 
-          ? service.provider.toString()
-          : (service.provider as { _id: { toString(): string } })._id.toString();
-      }
-    }
+    const customerId = booking.customer_id;
+    const providerId = booking.provider_id;
     
     const isCustomer = customerId === userData.sub;
     const isProvider = userData.role === 'service_provider' && providerId === userData.sub;
@@ -85,8 +67,37 @@ export async function GET(
       );
     }
 
+    // Transform response to match client interface
+    const transformedBooking = {
+      _id: booking.id,
+      service: booking.service ? {
+        _id: booking.service.id,
+        title: booking.service.title,
+        price: booking.service.price,
+        priceType: booking.service.price_type,
+        images: booking.service.images || [],
+        provider: booking.service.provider_id
+      } : null,
+      customer: booking.customer ? {
+        _id: booking.customer.id,
+        firstName: booking.customer.first_name,
+        lastName: booking.customer.last_name,
+        email: booking.customer.email
+      } : null,
+      status: booking.status,
+      startDate: booking.start_date,
+      endDate: booking.end_date,
+      numberOfGuests: booking.number_of_guests,
+      specialRequests: booking.special_requests,
+      totalPrice: booking.total_price,
+      providerNotes: booking.notes,
+      createdAt: booking.created_at,
+      updatedAt: booking.updated_at,
+      provider_id: booking.provider_id
+    };
+
     return NextResponse.json({
-      booking
+      booking: transformedBooking
     });
 
   } catch (error: any) {
@@ -100,10 +111,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
 
     // Check for authorization token
     const authHeader = request.headers.get('authorization');
@@ -116,7 +127,7 @@ export async function PATCH(
 
     // Extract token and user
     const token = authHeader.split(' ')[1];
-    const userData = await extractUserFromToken(token);
+    const userData = extractUserFromToken(token);
     
     if (!userData || !userData.sub) {
       return NextResponse.json(
@@ -125,14 +136,17 @@ export async function PATCH(
       );
     }
 
-    // Connect to database
-    await connectDB();
+    // Get Supabase client
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Fetch the booking
-    const booking = await Booking.findById(id)
-      .populate('service', 'provider');
+    const { data: booking, error: bookingError } = await supabaseAdmin
+      .from('bookings')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!booking) {
+    if (bookingError || !booking) {
       return NextResponse.json(
         { message: 'Booking not found' },
         { status: 404 }
@@ -153,25 +167,8 @@ export async function PATCH(
     }
 
     // Check permissions for status update
-    // Handle populated documents by safely accessing IDs with proper type handling
-    let customerId = '';
-    if (booking.customer) {
-      // Handle both populated and non-populated cases
-      customerId = 'firstName' in booking.customer 
-        ? (booking.customer as unknown as { _id: { toString(): string } })._id.toString()
-        : booking.customer.toString();
-    }
-    
-    let providerId = '';
-    if (booking.service) {
-      // Handle both populated and non-populated cases for service
-      const service = booking.service as unknown as { provider?: { toString(): string } | { _id: { toString(): string } } };
-      if (service.provider) {
-        providerId = 'toString' in service.provider 
-          ? service.provider.toString()
-          : (service.provider as { _id: { toString(): string } })._id.toString();
-      }
-    }
+    const customerId = booking.customer_id;
+    const providerId = booking.provider_id;
     
     const isCustomer = customerId === userData.sub;
     const isProvider = userData.role === 'service_provider' && providerId === userData.sub;
@@ -211,20 +208,50 @@ export async function PATCH(
     }
     
     if (providerNotes && (isProvider || isAdmin)) {
-      updateData.providerNotes = providerNotes;
+      updateData.notes = providerNotes;
     }
 
-    const updatedBooking = await Booking.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true }
-    )
-      .populate('service', 'title price priceType images')
-      .populate('customer', 'firstName lastName email');
+    const { data: updatedBooking, error: updateError } = await supabaseAdmin
+      .from('bookings')
+      .update(updateData)
+      .eq('id', id)
+      .select('*, service:service_id(id, title, price, price_type, images, provider_id), customer:customer_id(id, first_name, last_name, email)')
+      .single();
+
+    if (updateError) throw updateError;
+
+    // Transform response to match client interface
+    const transformedBooking = {
+      _id: updatedBooking.id,
+      service: updatedBooking.service ? {
+        _id: updatedBooking.service.id,
+        title: updatedBooking.service.title,
+        price: updatedBooking.service.price,
+        priceType: updatedBooking.service.price_type,
+        images: updatedBooking.service.images || [],
+        provider: updatedBooking.service.provider_id
+      } : null,
+      customer: updatedBooking.customer ? {
+        _id: updatedBooking.customer.id,
+        firstName: updatedBooking.customer.first_name,
+        lastName: updatedBooking.customer.last_name,
+        email: updatedBooking.customer.email
+      } : null,
+      status: updatedBooking.status,
+      startDate: updatedBooking.start_date,
+      endDate: updatedBooking.end_date,
+      numberOfGuests: updatedBooking.number_of_guests,
+      specialRequests: updatedBooking.special_requests,
+      totalPrice: updatedBooking.total_price,
+      providerNotes: updatedBooking.notes,
+      createdAt: updatedBooking.created_at,
+      updatedAt: updatedBooking.updated_at,
+      provider_id: updatedBooking.provider_id
+    };
 
     return NextResponse.json({
       message: 'Booking updated successfully',
-      booking: updatedBooking
+      booking: transformedBooking
     });
 
   } catch (error: any) {

@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import User from '@/models/User';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
+import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
-    // Connect to the database
-    await connectDB();
-
     // Parse request body
     const body = await req.json();
     const { firstName, lastName, email, password, role } = body;
@@ -19,32 +16,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Check if the user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    const { data: existingUsers } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email);
+
+    if (existingUsers && existingUsers.length > 0) {
       return NextResponse.json(
         { message: 'User with this email already exists' },
         { status: 409 }
       );
     }
 
-    // Create a new user
-    const user = await User.create({
-      firstName,
-      lastName,
-      email,
-      password,
-      role: role || 'customer',
-    });
+    // Generate a UUID for the new user
+    const userId = crypto.randomUUID();
 
-    // Remove password from response
+    // Create a new user
+    const { data: user, error: createError } = await supabaseAdmin
+      .from('users')
+      .insert([
+        {
+          id: userId,
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          role: role || 'customer',
+          is_verified: false,
+          rating: 0,
+          review_count: 0,
+        },
+      ])
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('User creation error:', createError);
+      return NextResponse.json(
+        { message: 'Failed to create user' },
+        { status: 500 }
+      );
+    }
+
+    // Prepare user data for response
     const userResponse = {
-      _id: user._id,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
       email: user.email,
       role: user.role,
-      createdAt: user.createdAt,
+      createdAt: user.created_at,
     };
 
     return NextResponse.json(

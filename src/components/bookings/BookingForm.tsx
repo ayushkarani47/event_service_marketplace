@@ -107,7 +107,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ serviceId, serviceName, price
       const data = await response.json();
       
       // Redirect to booking confirmation page
-      router.push(`/bookings/${data.booking._id}`);
+      router.push(`/bookings/${data.booking.id || data.booking._id}`);
       
     } catch (err: any) {
       console.error('Error creating booking:', err);

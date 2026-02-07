@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import User from '@/models/User';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
 import { extractUserFromToken } from '@/lib/jwt';
 
 export async function GET(req: NextRequest) {
@@ -21,20 +20,24 @@ export async function GET(req: NextRequest) {
     // Verify and decode the token
     const decodedToken = extractUserFromToken(token);
     
-    if (!decodedToken) {
+    if (!decodedToken || !decodedToken.sub) {
       return NextResponse.json(
         { message: 'Unauthorized - Invalid token' },
         { status: 401 }
       );
     }
 
-    // Connect to the database
-    await connectDB();
+    // Get Supabase admin client
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Find the user by ID
-    const user = await User.findById(decodedToken.sub).select('-password');
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, phone, first_name, last_name, email, role, profile_picture, bio, location, rating, review_count, is_verified, created_at, updated_at')
+      .eq('id', decodedToken.sub)
+      .single();
     
-    if (!user) {
+    if (error || !user) {
       return NextResponse.json(
         { message: 'User not found' },
         { status: 404 }

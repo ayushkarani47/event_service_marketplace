@@ -20,6 +20,14 @@ export default function ReviewList({ serviceId }: ReviewListProps) {
         setLoading(true);
         setError(null);
         
+        // Guard against undefined serviceId
+        if (!serviceId) {
+          console.warn('ReviewList: serviceId is undefined');
+          setReviews([]);
+          setLoading(false);
+          return;
+        }
+        
         // We've updated getServiceReviews to return an empty array instead of throwing
         const data = await getServiceReviews(serviceId);
         setReviews(data);

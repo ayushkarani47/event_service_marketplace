@@ -1,23 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import Message from '@/models/Message';
-import Conversation from '@/models/Conversation';
-import mongoose from 'mongoose';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
 
 // Direct chat messages API that bypasses middleware authentication
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-    
     // Get data directly from the request body
     const body = await request.json();
+    const supabaseAdmin = getSupabaseAdmin();
     
     console.log('Chat message request body:', JSON.stringify(body));
     
     // Validate required fields
-    if (!body.userId || !body.receiver || !body.content) {
+    if (!body.userId || !body.conversationId || !body.content) {
       return NextResponse.json(
-        { message: 'User ID, receiver, and content are required' },
+        { message: 'User ID, conversation ID, and content are required' },
         { status: 400 }
       );
     }
@@ -25,60 +21,37 @@ export async function POST(request: NextRequest) {
     const userId = body.userId;
     
     // Create the message
-    const message = await Message.create({
-      sender: userId,
-      receiver: body.receiver,
-      content: body.content,
-      serviceId: body.serviceId || null,
-      bookingId: body.bookingId || null,
-      read: false
-    });
+    const { data: message, error: messageError } = await supabaseAdmin
+      .from('messages')
+      .insert({
+        conversation_id: body.conversationId,
+        sender_id: userId,
+        receiver_id: body.receiver_id,
+        content: body.content,
+        read: false
+      })
+      .select('*, sender:sender_id(id, first_name, last_name, profile_picture)')
+      .single();
 
-    console.log('Message created:', message._id);
+    if (messageError) throw messageError;
 
-    // Update or create conversation
-    const participants = [userId, body.receiver].sort();
-    
-    // Find existing conversation or create new one
-    let conversation = await Conversation.findOne({
-      participants: { $all: participants, $size: participants.length },
-      ...(body.serviceId ? { serviceId: body.serviceId } : {}),
-      ...(body.bookingId ? { bookingId: body.bookingId } : {})
-    });
+    console.log('Message created:', message.id);
 
-    if (!conversation) {
-      console.log('Creating new conversation');
-      conversation = await Conversation.create({
-        participants,
-        serviceId: body.serviceId || null,
-        bookingId: body.bookingId || null,
-        lastMessage: body.content,
-        lastMessageDate: new Date(),
-        unreadCount: { [body.receiver]: 1 }
-      });
-    } else {
-      console.log('Updating existing conversation:', conversation._id);
-      // Update last message and increment unread count
-      const update: any = {
-        lastMessage: body.content,
-        lastMessageDate: new Date()
-      };
-      
-      // Increment unread count for receiver
-      update[`unreadCount.${body.receiver}`] = (conversation.unreadCount?.[body.receiver] || 0) + 1;
-      
-      await Conversation.findByIdAndUpdate(conversation._id, {
-        $set: update
-      });
-    }
+    // Update conversation's last message
+    const { error: updateError } = await supabaseAdmin
+      .from('conversations')
+      .update({
+        last_message: body.content,
+        last_message_date: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', body.conversationId);
 
-    // Populate the message
-    const populatedMessage = await Message.findById(message._id)
-      .populate('sender', 'firstName lastName profilePicture');
+    if (updateError) throw updateError;
 
     return NextResponse.json({ 
       success: true, 
-      data: populatedMessage 
+      data: message 
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error sending message:', error);

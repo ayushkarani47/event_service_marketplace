@@ -1,58 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import Conversation from '@/models/Conversation';
-import Message from '@/models/Message';
-import User from '@/models/User';
-import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
+import { extractUserFromToken } from '@/lib/jwt';
 
 // Helper function to get the current user from the token
 function getCurrentUser(request: NextRequest) {
   try {
-    // Get token from cookies
-    const token = request.cookies.get('token')?.value;
-    
-    if (!token) {
-      // Try to get token from Authorization header as fallback
-      const authHeader = request.headers.get('Authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const headerToken = authHeader.substring(7);
-        try {
-          const decoded = jwt.verify(headerToken, process.env.JWT_SECRET || 'your_jwt_secret') as { _id: string };
-          console.log('User authenticated via Authorization header');
-          return decoded;
-        } catch (err) {
-          console.error('Invalid token in Authorization header:', err);
-        }
-      }
-      
-      console.log('No token found in cookies or Authorization header');
+    // Get token from Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No Authorization header found');
       return null;
     }
     
-    // Verify the token from cookies
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret') as { _id: string };
-      console.log('User authenticated via cookie token');
-      return decoded;
-    } catch (jwtError) {
-      console.error('JWT verification error:', jwtError);
-      
-      // If the token is expired or invalid, try to get it from localStorage via headers
-      const authHeader = request.headers.get('Authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const headerToken = authHeader.substring(7);
-        try {
-          const decoded = jwt.verify(headerToken, process.env.JWT_SECRET || 'your_jwt_secret') as { _id: string };
-          console.log('User authenticated via Authorization header (fallback)');
-          return decoded;
-        } catch (err) {
-          console.error('Invalid token in Authorization header (fallback):', err);
-        }
-      }
-      
+    const token = authHeader.substring(7);
+    const decoded = extractUserFromToken(token);
+    
+    if (!decoded || !decoded.sub) {
+      console.error('Invalid token');
       return null;
     }
+    
+    console.log('User authenticated via Authorization header');
+    return decoded;
   } catch (error) {
     console.error('Error getting current user:', error);
     return null;
@@ -65,8 +34,6 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await connectDB();
-
     // Get the current user from the token
     const user = getCurrentUser(request);
     if (!user) {
@@ -77,7 +44,7 @@ export async function GET(
       );
     }
 
-    if (!user._id) {
+    if (!user.sub) {
       console.log('Invalid user ID in token');
       return NextResponse.json(
         { message: 'Invalid user information' },
@@ -85,17 +52,20 @@ export async function GET(
       );
     }
 
-    const userId = user._id;
+    const userId = user.sub;
     const conversationId = params.id;
+    const supabaseAdmin = getSupabaseAdmin();
 
     console.log(`Fetching conversation: ${conversationId} for user: ${userId}`);
 
     // Get the conversation
-    const conversation = await Conversation.findById(conversationId)
-      .populate('participants', 'firstName lastName profilePicture')
-      .populate('serviceId', 'title images');
+    const { data: conversation, error: convError } = await supabaseAdmin
+      .from('conversations')
+      .select('*, service:service_id(id, title, images)')
+      .eq('id', conversationId)
+      .single();
 
-    if (!conversation) {
+    if (convError || !conversation) {
       console.log(`Conversation not found: ${conversationId}`);
       return NextResponse.json(
         { message: 'Conversation not found' },
@@ -104,7 +74,7 @@ export async function GET(
     }
 
     // Check if user is a participant
-    const isParticipant = conversation.participants.some((p: any) => p._id.toString() === userId);
+    const isParticipant = conversation.participant_ids && conversation.participant_ids.includes(userId);
     if (!isParticipant) {
       console.log(`User ${userId} is not authorized to view conversation ${conversationId}`);
       return NextResponse.json(
@@ -116,33 +86,27 @@ export async function GET(
     console.log(`Fetching messages for conversation: ${conversationId}`);
 
     // Get messages for this conversation
-    const messages = await Message.find({
-      $or: [
-        { sender: userId, receiver: { $in: conversation.participants.map((p: any) => p._id) } },
-        { receiver: userId, sender: { $in: conversation.participants.map((p: any) => p._id) } }
-      ],
-      ...(conversation.serviceId ? { serviceId: conversation.serviceId } : {}),
-      ...(conversation.bookingId ? { bookingId: conversation.bookingId } : {})
-    })
-    .sort({ createdAt: 1 })
-    .populate('sender', 'firstName lastName profilePicture');
+    const { data: messages, error: msgError } = await supabaseAdmin
+      .from('messages')
+      .select('*, sender:sender_id(id, first_name, last_name, profile_picture)')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
 
-    console.log(`Found ${messages.length} messages for conversation: ${conversationId}`);
+    if (msgError) throw msgError;
 
-    // Mark messages as read
-    await Message.updateMany(
-      { receiver: userId, read: false },
-      { read: true }
-    );
+    console.log(`Found ${messages?.length || 0} messages for conversation: ${conversationId}`);
 
-    // Reset unread count for this user
-    const unreadCountUpdate: any = {};
-    unreadCountUpdate[`unreadCount.${userId}`] = 0;
-    await Conversation.findByIdAndUpdate(conversationId, { $set: unreadCountUpdate });
+    // Mark messages as read for this user
+    await supabaseAdmin
+      .from('messages')
+      .update({ read: true })
+      .eq('conversation_id', conversationId)
+      .eq('receiver_id', userId)
+      .eq('read', false);
 
     return NextResponse.json({ 
       success: true, 
-      data: { conversation, messages } 
+      data: { conversation, messages: messages || [] } 
     });
   } catch (error: any) {
     console.error('Error fetching conversation:', error);
@@ -162,8 +126,6 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await connectDB();
-
     // Get the current user from the token
     const user = getCurrentUser(request);
     if (!user) {
@@ -174,7 +136,7 @@ export async function DELETE(
       );
     }
 
-    if (!user._id) {
+    if (!user.sub) {
       console.log('Invalid user ID in token');
       return NextResponse.json(
         { message: 'Invalid user information' },
@@ -182,15 +144,20 @@ export async function DELETE(
       );
     }
 
-    const userId = user._id;
+    const userId = user.sub;
     const conversationId = params.id;
+    const supabaseAdmin = getSupabaseAdmin();
 
     console.log(`Deleting conversation: ${conversationId} for user: ${userId}`);
 
     // Get the conversation
-    const conversation = await Conversation.findById(conversationId);
+    const { data: conversation, error: convError } = await supabaseAdmin
+      .from('conversations')
+      .select('*')
+      .eq('id', conversationId)
+      .single();
 
-    if (!conversation) {
+    if (convError || !conversation) {
       console.log(`Conversation not found: ${conversationId}`);
       return NextResponse.json(
         { message: 'Conversation not found' },
@@ -199,7 +166,7 @@ export async function DELETE(
     }
 
     // Check if user is a participant
-    const isParticipant = conversation.participants.some((p: any) => p.toString() === userId);
+    const isParticipant = conversation.participant_ids && conversation.participant_ids.includes(userId);
     if (!isParticipant) {
       console.log(`User ${userId} is not authorized to delete conversation ${conversationId}`);
       return NextResponse.json(
@@ -211,17 +178,21 @@ export async function DELETE(
     console.log(`Deleting messages for conversation: ${conversationId}`);
 
     // Delete all messages in the conversation
-    await Message.deleteMany({
-      $or: [
-        { sender: userId, receiver: { $in: conversation.participants } },
-        { receiver: userId, sender: { $in: conversation.participants } }
-      ],
-      ...(conversation.serviceId ? { serviceId: conversation.serviceId } : {}),
-      ...(conversation.bookingId ? { bookingId: conversation.bookingId } : {})
-    });
+    const { error: deleteMessagesError } = await supabaseAdmin
+      .from('messages')
+      .delete()
+      .eq('conversation_id', conversationId);
+
+    if (deleteMessagesError) throw deleteMessagesError;
 
     // Delete the conversation
-    await Conversation.findByIdAndDelete(conversationId);
+    const { error: deleteConvError } = await supabaseAdmin
+      .from('conversations')
+      .delete()
+      .eq('id', conversationId);
+
+    if (deleteConvError) throw deleteConvError;
+
     console.log(`Conversation ${conversationId} deleted successfully`);
 
     return NextResponse.json({ 

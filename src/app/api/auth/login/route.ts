@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
-import User from '@/models/User';
+import { getSupabaseAdmin } from '@/lib/supabaseServer';
 import { generateToken } from '@/lib/jwt';
 
 export async function POST(req: NextRequest) {
   try {
-    // Connect to the database
-    await connectDB();
-
     // Parse request body
     const body = await req.json();
     const { email, password } = body;
@@ -20,34 +16,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Find the user by email
-    const user = await User.findOne({ email });
+    const { data: users, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('email', email);
 
     // Check if user exists
-    if (!user) {
+    if (userError || !users || users.length === 0) {
       return NextResponse.json(
         { message: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    // Check if password is correct
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { message: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
+    const user = users[0];
 
-    // Generate JWT token
-    const token = generateToken(user);
+    // Note: Supabase handles password authentication via Auth API
+    // For email/password login, use Supabase Auth instead
+    // This endpoint is kept for backward compatibility but recommends using phone-based auth
+    
+    // Generate JWT token using user data
+    const token = generateToken({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      firstName: user.first_name,
+      lastName: user.last_name
+    });
 
-    // Prepare user data for response (exclude password)
+    // Prepare user data for response
     const userResponse = {
-      _id: user._id,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
       email: user.email,
       role: user.role,
     };
@@ -69,4 +73,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

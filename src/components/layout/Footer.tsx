@@ -32,7 +32,7 @@ const Footer: React.FC = () => {
       <Container maxWidth="lg">
         <Grid container spacing={4}>
           {/* Company Info */}
-          <Grid item xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', mb: 2 }}>
               EventHub
             </Typography>
@@ -74,7 +74,7 @@ const Footer: React.FC = () => {
           </Grid>
 
           {/* Quick Links */}
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', mb: 2 }}>
               Quick Links
             </Typography>
@@ -95,7 +95,7 @@ const Footer: React.FC = () => {
           </Grid>
 
           {/* Service Categories */}
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', mb: 2 }}>
               Categories
             </Typography>
@@ -119,7 +119,7 @@ const Footer: React.FC = () => {
           </Grid>
 
           {/* Contact */}
-          <Grid item xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', mb: 2 }}>
               Contact Us
             </Typography>

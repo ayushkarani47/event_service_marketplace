@@ -4,12 +4,13 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { FcGoogle } from 'react-icons/fc';
 
 // Client component that uses useSearchParams
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated, error, clearError, isLoading } = useAuth();
+  const { login, loginWithGoogle, loginWithOtpEmail, loginWithOtpPhone, isAuthenticated, error, clearError, isLoading } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -17,6 +18,8 @@ function LoginContent() {
   });
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [redirectPath, setRedirectPath] = useState('/');
+  const [phone, setPhone] = useState('');
+  const [infoMsg, setInfoMsg] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user just registered successfully
@@ -46,6 +49,7 @@ function LoginContent() {
     
     // Clear any previous errors
     clearError();
+    setInfoMsg(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,6 +59,20 @@ function LoginContent() {
     if (success) {
       router.push(redirectPath);
     }
+  };
+
+  const handleGoogle = async () => {
+    await loginWithGoogle();
+  };
+
+  const handleMagicLink = async () => {
+    const ok = await loginWithOtpEmail(formData.email);
+    if (ok) setInfoMsg('Magic link sent to your email');
+  };
+
+  const handleSendPhoneOtp = async () => {
+    const ok = await loginWithOtpPhone(phone);
+    if (ok) setInfoMsg('OTP sent to your phone');
   };
 
   return (
@@ -134,9 +152,10 @@ function LoginContent() {
             </div>
           </div>
 
-          {error && (
+          {(error || infoMsg) && (
             <div className="bg-red-50 border-l-4 border-red-500 p-4">
-              <p className="text-sm text-red-700">{error}</p>
+              {error && <p className="text-sm text-red-700">{error}</p>}
+              {infoMsg && <p className="text-sm text-green-700">{infoMsg}</p>}
             </div>
           )}
 
@@ -150,6 +169,52 @@ function LoginContent() {
             </button>
           </div>
         </form>
+
+        {/* Divider */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={handleGoogle}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <FcGoogle size={20} />
+            <span>Google</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleMagicLink}
+            className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            Email Magic Link
+          </button>
+
+          <div className="flex gap-2">
+            <input
+              type="tel"
+              placeholder="Phone e.g. +1234567890"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="flex-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleSendPhoneOtp}
+              className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            >
+              Send OTP
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -33,27 +33,34 @@ import {
 } from '@mui/icons-material';
 
 interface Service {
-  _id: string;
+  _id?: string;
+  id?: string;
   title: string;
   description: string;
   category: string;
   price: number;
-  priceType: 'fixed' | 'hourly' | 'starting_at';
+  priceType?: 'fixed' | 'hourly' | 'starting_at';
+  price_type?: 'fixed' | 'hourly' | 'starting_at';
   images: string[];
   location: string;
-  rating: number;
-  reviewCount: number;
+  rating?: number;
+  review_count?: number;
+  reviewCount?: number;
   features?: string[];
   availability?: {
     startDate: string;
     endDate: string;
   };
-  provider: {
-    _id: string;
-    firstName: string;
-    lastName: string;
+  provider?: {
+    _id?: string;
+    id?: string;
+    firstName?: string;
+    first_name?: string;
+    lastName?: string;
+    last_name?: string;
     email: string;
     profilePicture?: string;
+    profile_picture?: string;
     bio?: string;
     location?: string;
   };
@@ -212,18 +219,22 @@ const ServiceDetailsPage = () => {
 
   const getProviderName = () => {
     if (!service.provider) return 'Provider';
-    if (service.provider.firstName && service.provider.lastName) {
-      return `${service.provider.firstName} ${service.provider.lastName}`;
+    const firstName = service.provider.firstName || service.provider.first_name;
+    const lastName = service.provider.lastName || service.provider.last_name;
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
     }
-    if (service.provider.firstName) return service.provider.firstName;
-    if (service.provider.lastName) return service.provider.lastName;
+    if (firstName) return firstName;
+    if (lastName) return lastName;
     return 'Provider';
   };
 
   const getProviderInitial = () => {
     if (!service.provider) return '?';
-    if (service.provider.firstName) return service.provider.firstName.charAt(0);
-    if (service.provider.lastName) return service.provider.lastName.charAt(0);
+    const firstName = service.provider.firstName || service.provider.first_name;
+    const lastName = service.provider.lastName || service.provider.last_name;
+    if (firstName) return firstName.charAt(0);
+    if (lastName) return lastName.charAt(0);
     return '?';
   };
 
@@ -416,7 +427,7 @@ const ServiceDetailsPage = () => {
               >
                 {service.title}
               </Typography>
-              <RatingDisplay rating={service.rating} reviewCount={service.reviewCount} size="lg" />
+              <RatingDisplay rating={service.rating || 0} reviewCount={service.reviewCount || service.review_count || 0} size="lg" />
             </Box>
 
             <Box sx={{ 
@@ -573,7 +584,7 @@ const ServiceDetailsPage = () => {
             
             {/* Reviews Section */}
             <Box sx={{ mt: 4 }}>
-              <ReviewList serviceId={service._id} />
+              <ReviewList serviceId={service._id || service.id || ''} />
             </Box>
           </Paper>
         </Box>
@@ -583,10 +594,10 @@ const ServiceDetailsPage = () => {
             {/* Booking Section */}
             {showBookingForm ? (
               <BookingForm 
-                serviceId={service._id}
+                serviceId={service._id || service.id || ''}
                 serviceName={service.title}
                 price={service.price}
-                priceType={service.priceType}
+                priceType={service.priceType || service.price_type || 'fixed'}
               />
             ) : (
               <Box
@@ -740,7 +751,7 @@ const ServiceDetailsPage = () => {
                   textAlign: { xs: 'center', sm: 'left' }
                 }}>
                   <Avatar 
-                    src={service.provider.profilePicture} 
+                    src={service.provider?.profilePicture || service.provider?.profile_picture || ''} 
                     alt={getProviderName()}
                     sx={{ 
                       width: 80, 
@@ -813,10 +824,10 @@ const ServiceDetailsPage = () => {
                     View Profile
                   </Button>
                   <ChatButton 
-                    receiverId={service.provider._id}
+                    receiverId={service.provider?._id || service.provider?.id || ''}
                     receiverName={getProviderName()}
-                    receiverImage={service.provider.profilePicture}
-                    serviceId={service._id}
+                    receiverImage={service.provider?.profilePicture || service.provider?.profile_picture}
+                    serviceId={service._id || service.id || ''}
                   />
                 </Box>
               </CardContent>

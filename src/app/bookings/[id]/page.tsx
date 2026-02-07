@@ -148,7 +148,7 @@ export default function BookingDetailsPage() {
     );
   }
 
-  const isProvider = user && booking.service.provider && user._id === booking.service.provider;
+  const isProvider = user && booking.provider_id && user._id === booking.provider_id;
   const isCustomer = user && booking.customer && user._id === booking.customer._id;
 
   return (
