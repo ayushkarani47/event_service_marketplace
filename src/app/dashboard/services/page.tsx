@@ -135,7 +135,7 @@ export default function ManageServicesPage() {
                 <p className="text-gray-600 mb-3 line-clamp-2">{service.description}</p>
                 <div className="flex justify-between mb-3">
                   <span className="text-gray-500">{service.category}</span>
-                  <span className="font-semibold">${service.price}</span>
+                  <span className="font-semibold">₹{service.price}</span>
                 </div>
                 <div className="flex space-x-2">
                   <Link 

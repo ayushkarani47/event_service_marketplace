@@ -126,16 +126,16 @@ const Footer: React.FC = () => {
             <List disablePadding>
               <ListItem sx={{ color: 'grey.400', py: 0.5 }}>
                 <LocationIcon sx={{ mr: 1 }} fontSize="small" />
-                <Typography variant="body2">123 Event Street, City, Country</Typography>
+                <Typography variant="body2">Mumbai,India</Typography>
               </ListItem>
               <ListItem sx={{ color: 'grey.400', py: 0.5 }}>
                 <EmailIcon sx={{ mr: 1 }} fontSize="small" />
-                <Typography variant="body2">contact@eventhub.com</Typography>
+                <Typography variant="body2">ayushkarani4747@gmail.com</Typography>
               </ListItem>
-              <ListItem sx={{ color: 'grey.400', py: 0.5 }}>
+              {/* <ListItem sx={{ color: 'grey.400', py: 0.5 }}>
                 <PhoneIcon sx={{ mr: 1 }} fontSize="small" />
                 <Typography variant="body2">+1 (555) 123-4567</Typography>
-              </ListItem>
+              </ListItem> */}
             </List>
           </Grid>
         </Grid>
